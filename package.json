@@ -1,0 +1,48 @@
+{
+  "name": "nyancy-sticker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "sticker": "tsx cli/index.ts",
+    "validate-manifest": "tsx scripts/validate-manifest.ts",
+    "prebuild": "tsx scripts/validate-manifest.ts"
+  },
+  "dependencies": {
+    "@heroui/react": "^3.0.5",
+    "@heroui/styles": "^3.0.5",
+    "@serwist/next": "^9.5.11",
+    "@tanstack/react-virtual": "^3.13.25",
+    "framer-motion": "^12.39.0",
+    "fuse.js": "^7.3.0",
+    "next": "^16.2.6",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1051.0",
+    "@eslint/eslintrc": "^3.3.5",
+    "@inquirer/prompts": "^8.4.3",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "cac": "^7.0.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^10.4.0",
+    "eslint-config-next": "^16.2.6",
+    "nanoid": "^5.1.11",
+    "serwist": "^9.5.11",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "categories": [
+    { "id": "cat", "name": "猫猫", "emoji": "🐱" },
+    { "id": "doge", "name": "狗狗", "emoji": "🐶" },
+    { "id": "meme", "name": "梗图", "emoji": "🤪" },
+    { "id": "reply", "name": "回复", "emoji": "💬" }
+  ],
+  "stickers": [
+    {
+      "id": "seed-001",
+      "name": "默念喵",
+      "src": "https://picsum.photos/seed/sticker1/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "cat",
+      "tags": ["发呆", "可爱"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-002",
+      "name": "震惊喵",
+      "src": "https://picsum.photos/seed/sticker2/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "cat",
+      "tags": ["震惊", "夸张"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-003",
+      "name": "doge 微笑",
+      "src": "https://picsum.photos/seed/sticker3/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "doge",
+      "tags": ["微笑", "经典"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-004",
+      "name": "笑死",
+      "src": "https://picsum.photos/seed/sticker4/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "meme",
+      "tags": ["笑", "回复"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-005",
+      "name": "无语",
+      "src": "https://picsum.photos/seed/sticker5/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "reply",
+      "tags": ["无语", "无奈"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-006",
+      "name": "好的",
+      "src": "https://picsum.photos/seed/sticker6/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "reply",
+      "tags": ["好的", "OK"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-007",
+      "name": "猫猫困了",
+      "src": "https://picsum.photos/seed/sticker7/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "cat",
+      "tags": ["困", "晚安"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-008",
+      "name": "汪汪满头问号",
+      "src": "https://picsum.photos/seed/sticker8/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "doge",
+      "tags": ["疑惑", "问号"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-009",
+      "name": "我裂开了",
+      "src": "https://picsum.photos/seed/sticker9/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "meme",
+      "tags": ["裂开", "崩溃"],
+      "ext": "jpg"
+    },
+    {
+      "id": "seed-010",
+      "name": "晚安",
+      "src": "https://picsum.photos/seed/sticker10/400/400",
+      "width": 400,
+      "height": 400,
+      "category": "reply",
+      "tags": ["晚安", "再见"],
+      "ext": "jpg"
+    }
+  ]
+}
