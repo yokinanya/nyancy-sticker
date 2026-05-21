@@ -23,6 +23,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
   if (!sticker) return null;
 
   const filename = `${sticker.name || sticker.id}.${sticker.ext}`;
+  const isGif = sticker.ext === "gif";
 
   const flash = (t: Toast, ms = 2000) => {
     setToast(t);
@@ -118,9 +119,15 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
             </Modal.Body>
             <Modal.Footer>
               <div className="grid w-full grid-cols-3 gap-2">
-                <Button isPending={busy === "image"} onPress={onCopyImage}>
-                  复制图片
-                </Button>
+                {isGif ? (
+                  <Button isPending={busy === "download"} onPress={onDownload}>
+                    下载 GIF
+                  </Button>
+                ) : (
+                  <Button isPending={busy === "image"} onPress={onCopyImage}>
+                    复制图片
+                  </Button>
+                )}
                 <Button variant="secondary" isPending={busy === "link"} onPress={onCopyLink}>
                   复制链接
                 </Button>
