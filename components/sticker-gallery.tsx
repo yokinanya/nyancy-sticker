@@ -8,6 +8,7 @@ import { StickerGrid } from "./sticker-grid";
 import { StickerPreviewModal } from "./sticker-preview-modal";
 import { useFilterStore } from "@/lib/store";
 import { createFuse, filterStickers } from "@/lib/search";
+import { categoryMatches, countStickersByCategoryTree } from "@/lib/categories";
 import type { Manifest, Sticker } from "@/lib/types";
 
 interface Props {
@@ -30,26 +31,26 @@ export function StickerGallery({ manifest }: Props) {
   }, [stickers]);
 
   const filtered = useMemo(
-    () => filterStickers(stickers, fuse, { query, category, tags }),
-    [stickers, fuse, query, category, tags],
+    () => filterStickers(stickers, fuse, { query, category, tags, categories }),
+    [stickers, fuse, query, category, tags, categories],
   );
 
   const categoryCounts = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const s of stickers) m[s.category] = (m[s.category] ?? 0) + 1;
-    return m;
-  }, [stickers]);
+    return countStickersByCategoryTree(categories, stickers);
+  }, [categories, stickers]);
 
   const topTags = useMemo(() => {
     const counts = new Map<string, number>();
-    const pool = category ? stickers.filter((s) => s.category === category) : stickers;
+    const pool = category
+      ? stickers.filter((s) => categoryMatches(categories, s.category, category))
+      : stickers;
     for (const s of pool) {
       for (const t of s.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
     }
     return [...counts.entries()]
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count);
-  }, [stickers, category]);
+  }, [stickers, category, categories]);
 
   const [active, setActive] = useState<Sticker | null>(null);
   const [open, setOpen] = useState(false);
@@ -83,7 +84,6 @@ export function StickerGallery({ manifest }: Props) {
       <CategoryTabs
         categories={categories}
         counts={categoryCounts}
-        total={stickers.length}
       />
       <TagFilter tags={topTags} />
       <div className="text-xs text-zinc-500">

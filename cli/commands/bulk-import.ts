@@ -64,7 +64,7 @@ export async function bulkImportCommand(dir: string, opts: Options) {
       category = await select({
         message: `${rel} 的分类`,
         choices: manifest.categories.map((c) => ({
-          name: `${c.emoji ?? ""}${c.name}`,
+          name: c.name,
           value: c.id,
         })),
         default: manifest.categories.some((c) => c.id === topDir) ? topDir : undefined,

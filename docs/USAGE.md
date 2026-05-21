@@ -1,231 +1,202 @@
 # 使用说明
 
-本文档面向**网站访客**、**内容运营者** 和 **开发者** 三类角色。
+本文档只面向贡献者和开发者，不包含网站访客使用指南。
 
----
+## 贡献指南
 
-## 一、访客：怎么用这个图库
+### 贡献范围
 
-### 基本操作
+可以通过 PR 贡献这些内容：
 
-| 动作 | 操作方式 |
-|---|---|
-| 浏览 | 直接滚动；点击顶部分类 Tab 切换；点击 #标签 多选筛选 |
-| 搜索 | 在搜索框输入关键词（名称/标签/分类都会被匹配）；快捷键 `/` 聚焦搜索框 |
-| 预览 | 点击任意表情卡片，弹出大图预览 |
-| 复制图片 | 预览框 → **复制图片**，直接到剪贴板，去聊天框 `Ctrl+V` 粘贴 |
-| 复制链接 | 预览框 → **复制链接**，得到 CDN URL |
-| 下载 | 预览框 → **下载**，保存到本地 |
-| 切换主题 | 右上角太阳/月亮图标 |
-| 安装到主屏 | 浏览器地址栏的「安装」按钮（PWA）|
+- 修正表情名称、标签、分类归属
+- 新增或调整一级分类、二级分类
+- 提交新的表情包素材
+- 修正文档、样式、代码问题
+- 改进搜索、筛选、管理页或 CLI 行为
 
-### 兼容性提示
+不要在 PR 中直接提交图片文件，也不要手写无法验证的 CDN URL。图片文件需要由维护者下载检查后上传到 Cloudflare R2。
 
-- **复制图片** 依赖浏览器 Clipboard API：Chrome / Edge / Firefox / Safari 都支持
-- **GIF 复制** 只会拷贝首帧（浏览器限制）；如需保留动图，请用「下载」
-- iOS Safari 必须由用户手势触发复制；不支持时会自动回退提示
+### 提交表情包素材
 
----
+可以通过 GitHub Issue 提交表情包素材：
 
-## 二、运营：怎么添加表情包
+1. 将图片打包成压缩包，支持常见格式如 `zip`、`7z`
+2. 图片文件名会作为默认表情名称，例如 `紧张 2.gif` 会入库为 `紧张 2`
+3. 在压缩包内按角色和合集分目录更好，例如：
 
-> 前提：已配置 `.env.local`（见下文「环境变量」）
+```text
+喵田弥夜/
+└─ 2025/
+   ├─ 紧张 2.gif
+   └─ 晚安.png
+```
 
-### 单张添加
+4. 将压缩包上传到网盘
+5. 新建 Issue，附上网盘链接，并说明：
+   - 角色
+   - 合集
+   - 推荐标签
+   - 素材来源和授权情况
+
+
+### 修改数据
+
+数据文件是 [data/stickers.json](../data/stickers.json)。
+
+分类结构：
+
+```json
+{
+  "categories": [
+    { "id": "miya", "name": "喵田弥夜" },
+    { "id": "miya_2025", "name": "2025", "parentId": "miya" }
+  ],
+  "stickers": []
+}
+```
+
+规则：
+
+- 一级分类表示角色，没有 `parentId`
+- 二级分类表示合集，`parentId` 指向一级分类 id
+- 二级分类 id 使用 `一级分类id_二级分类短id`
+- 只支持两级分类，不支持三级分类
+- 表情的 `category` 必须指向已存在的分类 id
+- 标签写在 `tags` 数组里，保持短词、可搜索
+
+改完数据后运行：
 
 ```bash
-pnpm sticker add ./猫猫.png
+pnpm validate-manifest
 ```
 
-会依次询问：名称（默认文件名）、分类（从已有分类选）、标签（勾选已有 + 自定义）。
-回车确认后，CLI 会：
-1. 用 sharp 读取尺寸
-2. 计算 SHA-256 前 16 位作为对象 key
-3. 检查 R2 是否已有同名对象（hash 防重）
-4. 上传到 `<bucket>/<category>/<hash>.<ext>`
-5. 把元数据写进 `data/stickers.json`
+### 本地管理页
 
-跳过交互：
+维护者可以使用 `/admin` 管理数据：
 
 ```bash
-pnpm sticker add ./猫猫.png \
-  --name "默念喵" \
-  --category cat \
-  --tags "发呆,可爱" \
-  -y
+pnpm dev
 ```
 
-加 `--dry-run` 可以预览不实际上传。
+打开：
 
-### 批量导入
-
-最高效的方式是按子目录组织素材：
-
-```
-~/stickers/
-├─ cat/         ← 子目录名 = category id（须存在）
-│  ├─ a.png
-│  └─ b.gif
-├─ doge/
-│  └─ c.webp
-└─ meme/
-   └─ d.jpg
+```text
+http://localhost:3000/admin
 ```
 
-然后：
+本地管理页支持：
+
+- 新增、编辑、删除分类
+- 全局重命名或删除标签
+- 单条编辑名称、分类、标签
+- 批量改分类、加标签、删标签、删除
+- 批量上传本地图片到 R2
+
+`/admin` 只允许在 `NODE_ENV=development` 下写入。生产环境不会开放写入能力。
+
+### CLI
+
+CLI 仍可用于批量导入和维护：
 
 ```bash
-pnpm sticker bulk-import ~/stickers --category-from-dir -y
-```
-
-- `-y` 模式下：名称用文件名，标签留空（之后用 `edit` 或 `tag` 命令补）
-- 不加 `-y` 会对每张图询问名称和标签
-- 同 hash 已存在的会自动跳过（R2 和 manifest 都查重）
-
-### 修改与删除
-
-```bash
-pnpm sticker edit <id>           # 交互式改名称/分类/标签
-pnpm sticker tag <id> 标签1 标签2 # 追加标签
-pnpm sticker rm <id>             # 仅从 manifest 删除
-pnpm sticker rm <id> --purge     # 同时删 R2 对象（前提：无其它条目引用）
-```
-
-### 分类管理
-
-```bash
-pnpm sticker categories          # 列出所有分类 + 计数
-pnpm sticker categories:add      # 交互式新增（id + 名称 + emoji）
-pnpm sticker categories:rm <id>  # 删除（如果有引用会要求确认，但不会迁移）
-```
-
-> 删除分类时如果还有表情引用它，会留下「悬空引用」，记得先用 `pnpm sticker edit` 把那些表情迁到别的分类。
-
-### 校验数据
-
-每次 `pnpm build` 会自动跑：
-
-```bash
-pnpm sticker validate
-```
-
-检查项：
-- id 唯一性
-- 分类引用完整（不能引用已删除的分类）
-- src 字段非空
-- hash 唯一（重复会作为警告，不会失败）
-
-加 `--check-remote` 会额外 HEAD 检查每张图的 URL 是否可达（慢，2000 张要几分钟）：
-
-```bash
+pnpm sticker --help
+pnpm sticker categories
+pnpm sticker categories:add
+pnpm sticker categories:rm <id>
+pnpm sticker list --category <id>
+pnpm sticker edit <id>
+pnpm sticker tag <id> 标签1 标签2
+pnpm sticker rm <id>
 pnpm sticker validate --check-remote
 ```
 
-### 直接编辑 manifest
+批量导入目录：
 
-`data/stickers.json` 是单一数据源。理论上可以手改，但请记得：
-- 保持 id 唯一
-- 保持 hash 字段与 R2 对象对应（否则 `--purge` 会失效）
-- 改完跑一次 `pnpm sticker validate`
+```bash
+pnpm sticker bulk-import ./素材目录 --category-from-dir -y
+```
 
-CLI 写入时会自动按 id 排序，保证 git diff 友好。
-
----
-
-## 三、开发者：本地开发与部署
+## 开发指南
 
 ### 环境变量
 
-复制 `.env.example` → `.env.local`：
+复制 `.env.example` 为 `.env.local`：
 
-```env
-# Cloudflare R2
-R2_ACCOUNT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx        # Cloudflare dashboard 右侧
-R2_ACCESS_KEY_ID=xxxxxxxxxxxxxxxxxxxxxxx        # R2 → Manage R2 API Tokens
-R2_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxx
-R2_BUCKET=nyancy-stickers                       # bucket 名
-R2_PUBLIC_HOST=cdn.example.com                  # 绑定到 bucket 的自定义域名（无协议）
-
-# 前端用，必须 NEXT_PUBLIC_ 前缀，通常 = R2_PUBLIC_HOST
-NEXT_PUBLIC_R2_HOST=cdn.example.com
+```bash
+cp .env.example .env.local
 ```
 
-> R2 公开访问需要在 Cloudflare 控制台给 bucket 启用 **Public Access** 或绑定 Custom Domain。
+需要配置：
 
-### 跑起来
+```env
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=nyancy-stickers
+R2_PUBLIC_HOST=cdn.example.com
+NEXT_PUBLIC_R2_HOST=cdn.example.com
+NEXT_SERVER_ACTION_BODY_SIZE_LIMIT=100mb
+R2_PROXY_URL=
+```
+
+说明：
+
+- `R2_*` 用于本地管理页和 CLI 上传 R2
+- `NEXT_PUBLIC_R2_HOST` 用于 Next Image 远程图片白名单
+- `NEXT_SERVER_ACTION_BODY_SIZE_LIMIT` 控制 Server Action 请求体上限
+- `R2_PROXY_URL` 可选，用于本地通过代理访问 Cloudflare R2
+
+### 本地开发
 
 ```bash
 pnpm install
-pnpm build && pnpm start     # http://localhost:3000
+pnpm dev
 ```
 
-#### 关于 `pnpm dev`
+项目的 `dev` 和 `build` 都使用 webpack。Serwist/PWA 相关配置不依赖 Turbopack。
 
-由于 Next.js 16 默认 Turbopack，而 Serwist（PWA）尚不支持，本项目 `dev`/`build` 已固定加 `--webpack`。
-
-
-### 类型检查
+### 校验
 
 ```bash
 pnpm typecheck
+pnpm validate-manifest
+pnpm build
 ```
 
-`prebuild` 钩子会自动跑 `validate-manifest`，所以 `pnpm build` 前不必单独跑。
+`pnpm build` 会通过 `prebuild` 自动运行 manifest 校验。
 
-### 部署到 Vercel / Cloudflare Pages / Node
+### 目录说明
 
-- **Vercel**：直接连仓库，框架检测会自动识别 Next.js。在 Dashboard 配置 `NEXT_PUBLIC_R2_HOST`（其他 R2_* 不需要，因为前端不直接上传）
-- **自托管**：`pnpm build && pnpm start`，反代到端口 3000
-- **静态导出**：当前是 SSR（因为 PWA 需要 service worker 注册），不支持纯 `next export`
-
-### 自定义 logo
-
-替换 `public/icons/icon-192.png` 和 `public/icons/icon-512.png` 即可，PWA 会自动用新图标。如果想重新生成占位：
-
-```bash
-pnpm exec tsx scripts/generate-icons.ts
+```text
+app/                    Next.js App Router
+app/admin/              本地管理页、上传 Route Handler、Server Actions
+components/             前台图库组件
+lib/                    共享类型、搜索、分类、上传、manifest 读写逻辑
+cli/                    运维 CLI
+data/stickers.json      单一数据源
+public/icons/           PWA 图标
+docs/                   文档
 ```
 
-### 替换站点元数据
+### 关键实现
 
-- 标题、描述：`app/layout.tsx` 的 `metadata` 导出
-- PWA 名称、主题色：`app/manifest.ts`
-- 字体：`app/globals.css` 里的 `font-family`
+- [lib/types.ts](../lib/types.ts)：`Sticker`、`Category`、`Manifest`
+- [lib/categories.ts](../lib/categories.ts)：一级/二级分类工具函数
+- [lib/manifest-file.ts](../lib/manifest-file.ts)：本地 manifest 读写和校验
+- [lib/admin-upload.ts](../lib/admin-upload.ts)：本地上传文件解析、hash、R2 key 生成
+- [app/admin/upload/route.ts](../app/admin/upload/route.ts)：批量上传入口
+- [app/admin/sticker-table.tsx](../app/admin/sticker-table.tsx)：管理页分页编辑表格
 
-### 添加分类的最佳实践
+### 图标与站点信息
 
-1. 先 `pnpm sticker categories:add` 创建分类 id（英文，做对象 key 前缀）
-2. 在本地素材文件夹建立同名子目录
-3. `pnpm sticker bulk-import ./素材目录 --category-from-dir`
+- 站点 metadata：[app/layout.tsx](../app/layout.tsx)
+- PWA manifest：[app/manifest.ts](../app/manifest.ts)
+- 浏览器图标：[app/icon.png](../app/icon.png)
+- Apple 图标：[app/apple-icon.png](../app/apple-icon.png)
+- PWA 图标：[public/icons](../public/icons)
 
----
+### 发布注意事项
 
-## 四、常见问题
-
-### Q: 复制图片显示「当前浏览器不支持复制图片」？
-
-A: 你的浏览器没启用 Clipboard API。可能是：
-- HTTP 站点（必须 HTTPS）
-- 老版本浏览器
-- 隐私模式下被禁用
-
-回退方案：用「复制链接」或「下载」。
-
-### Q: GIF 复制后是静态图？
-
-A: 浏览器 Clipboard API 把所有图片都转成 PNG，动图必然变首帧。GIF 推荐**下载**到本地后再发送。
-
-### Q: 网站打开后看不到图片？
-
-A: 检查：
-1. `NEXT_PUBLIC_R2_HOST` 是否正确设置
-2. `next.config.ts` 的 `images.remotePatterns` 是否包含你的 CDN 域名
-3. R2 bucket 是否开启了公开访问 / 自定义域名
-
-### Q: 想关闭 PWA？
-
-A: `app/layout.tsx` 删除 `manifest` 字段；`next.config.ts` 删掉 `withSerwist` 包装；删除 `app/sw.ts`。
-
-### Q: 一次能加多少张？
-
-A: 没有硬上限。Manifest 通过 RSC 序列化到 HTML（约每张 200 bytes），10000 张大概 2 MB HTML —— 仍可接受。超过后建议改为客户端按需 fetch（修改 `app/page.tsx` 把 manifest 改为 API 拉取）。
+- 部署环境不需要 R2 写入凭证，除非要在该环境开放管理上传
+- `data/stickers.json` 会进入构建产物，发布前必须提交最新数据
+- `public/sw.js` 是构建产物，变更 PWA 行为后重新构建

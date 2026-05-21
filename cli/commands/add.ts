@@ -46,7 +46,7 @@ export async function addCommand(files: string[], opts: Options) {
       } else {
         category = await select({
           message: "分类",
-          choices: categories.map((c) => ({ name: `${c.emoji ?? ""}${c.name}`, value: c.id })),
+          choices: categories.map((c) => ({ name: c.name, value: c.id })),
         });
       }
     }

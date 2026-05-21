@@ -31,7 +31,7 @@ export function SearchBar() {
       <Input
         aria-label="搜索表情包"
         type="search"
-        placeholder="搜索名称 / 标签 / 分类，例如「猫猫」「无语」"
+        placeholder="搜索名称 / 标签 / 分类"
         className="w-full pl-9"
         value={local}
         onChange={(e) => setLocal(e.target.value)}

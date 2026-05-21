@@ -15,6 +15,14 @@ export async function validateCommand(opts: { checkRemote?: boolean } = {}) {
 
   // 分类引用完整
   const catIds = new Set(m.categories.map((c) => c.id));
+  for (const c of m.categories) {
+    if (!c.parentId) continue;
+    if (c.parentId === c.id) errors.push(`${c.id} 不能把自己设为父分类`);
+    if (!catIds.has(c.parentId)) errors.push(`${c.id} 引用了不存在的父分类: ${c.parentId}`);
+    if (m.categories.find((item) => item.id === c.parentId)?.parentId) {
+      errors.push(`${c.id} 不能挂到二级分类下面`);
+    }
+  }
   for (const s of m.stickers) {
     if (!catIds.has(s.category))
       errors.push(`${s.id} 引用了不存在的分类: ${s.category}`);

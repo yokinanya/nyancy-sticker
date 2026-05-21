@@ -11,7 +11,7 @@ export async function editCommand(id: string) {
   s.category = await select({
     message: "分类",
     choices: m.categories.map((c) => ({
-      name: `${c.emoji ?? ""}${c.name}`,
+      name: c.name,
       value: c.id,
     })),
     default: s.category,

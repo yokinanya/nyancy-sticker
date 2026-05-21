@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "nyancy 表情包图库",
-    short_name: "nyancy",
+    name: "猫猫冲表情站",
+    short_name: "猫猫冲表情站",
     description: "可复制、可下载的中文表情包图库",
     start_url: "/",
     display: "standalone",

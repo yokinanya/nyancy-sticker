@@ -17,7 +17,7 @@ export interface Sticker {
 export interface Category {
   id: string;
   name: string;
-  emoji?: string;
+  parentId?: string;
 }
 
 export interface Manifest {

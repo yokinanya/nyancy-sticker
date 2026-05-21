@@ -1,7 +1,8 @@
 "use client";
 
 import Fuse from "fuse.js";
-import type { Sticker } from "./types";
+import { categoryMatches } from "@/lib/categories";
+import type { Category, Sticker } from "./types";
 
 export function createFuse(stickers: Sticker[]) {
   return new Fuse(stickers, {
@@ -19,10 +20,12 @@ export function createFuse(stickers: Sticker[]) {
 export function filterStickers(
   stickers: Sticker[],
   fuse: Fuse<Sticker> | null,
-  opts: { query: string; category: string | null; tags: string[] },
+  opts: { query: string; category: string | null; tags: string[]; categories: Category[] },
 ): Sticker[] {
   let pool = stickers;
-  if (opts.category) pool = pool.filter((s) => s.category === opts.category);
+  if (opts.category) {
+    pool = pool.filter((s) => categoryMatches(opts.categories, s.category, opts.category!));
+  }
   if (opts.tags.length > 0)
     pool = pool.filter((s) => opts.tags.every((t) => s.tags.includes(t)));
   if (!opts.query.trim() || !fuse) return pool;

@@ -5,13 +5,17 @@ import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "nyancy 表情包图库",
+  title: "猫猫冲表情站",
   description: "一个轻量、可复制、可下载的中文表情包图库",
-  applicationName: "nyancy sticker",
+  applicationName: "猫猫冲表情站",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
   appleWebApp: {
     capable: true,
-    title: "nyancy",
+    title: "猫猫冲表情站",
     statusBarStyle: "black-translucent",
   },
 };

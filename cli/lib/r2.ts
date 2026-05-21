@@ -4,6 +4,8 @@ import {
   HeadObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import type { StickerExt } from "../../lib/types.js";
 
 const CONTENT_TYPE: Record<StickerExt, string> = {
@@ -31,8 +33,19 @@ function client(): S3Client {
       accessKeyId: envOrThrow("R2_ACCESS_KEY_ID"),
       secretAccessKey: envOrThrow("R2_SECRET_ACCESS_KEY"),
     },
+    requestHandler: createRequestHandler(),
   });
   return _client;
+}
+
+function createRequestHandler() {
+  const proxyUrl = process.env.R2_PROXY_URL;
+  if (!proxyUrl) return undefined;
+  const agent = new HttpsProxyAgent(proxyUrl);
+  return new NodeHttpHandler({
+    httpAgent: agent,
+    httpsAgent: agent,
+  });
 }
 
 export function r2Config() {
