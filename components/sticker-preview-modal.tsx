@@ -118,7 +118,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
               </div>
             </Modal.Body>
             <Modal.Footer>
-              <div className="grid w-full grid-cols-3 gap-2">
+              <div className="flex w-full justify-center gap-3">
                 {isGif ? (
                   <Button isPending={busy === "download"} onPress={onDownload}>
                     下载 GIF
@@ -131,9 +131,11 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                 <Button variant="secondary" isPending={busy === "link"} onPress={onCopyLink}>
                   复制链接
                 </Button>
-                <Button variant="ghost" isPending={busy === "download"} onPress={onDownload}>
-                  下载
-                </Button>
+                {!isGif ? (
+                  <Button variant="ghost" isPending={busy === "download"} onPress={onDownload}>
+                    下载
+                  </Button>
+                ) : null}
               </div>
             </Modal.Footer>
           </Modal.Dialog>
