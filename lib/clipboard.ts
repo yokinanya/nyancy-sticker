@@ -59,12 +59,12 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function downloadFile(src: string, filename: string) {
+export async function downloadFile(src: string, filename: string) {
+  // 走服务端代理，统一加 Content-Disposition: attachment，避免跨域 <a download> 被忽略。
+  const proxied = `/api/download?url=${encodeURIComponent(src)}&name=${encodeURIComponent(filename)}`;
   const a = document.createElement("a");
-  a.href = src;
+  a.href = proxied;
   a.download = filename;
-  a.rel = "noopener";
-  a.target = "_blank";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

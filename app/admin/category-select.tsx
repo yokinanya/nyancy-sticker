@@ -10,9 +10,10 @@ interface Props {
   value: string;
   name?: string;
   onChange?: (value: string) => void;
+  triggerClassName?: string;
 }
 
-export function CategorySelect({ categories, value, name, onChange }: Props) {
+export function CategorySelect({ categories, value, name, onChange, triggerClassName }: Props) {
   const [localValue, setLocalValue] = useState(value);
   const selected = onChange ? value : localValue;
 
@@ -29,7 +30,7 @@ export function CategorySelect({ categories, value, name, onChange }: Props) {
         }}
         className="min-w-44"
       >
-        <Select.Trigger>
+        <Select.Trigger className={triggerClassName}>
           <Select.Value />
           <Select.Indicator />
         </Select.Trigger>
@@ -37,7 +38,7 @@ export function CategorySelect({ categories, value, name, onChange }: Props) {
           <ListBox>
             {categories.map((category) => (
               <ListBox.Item key={category.id} id={category.id} textValue={category.name}>
-                {category.id === "__root" ? category.name : categoryLabel(category)}
+                {categoryLabel(category)}
               </ListBox.Item>
             ))}
           </ListBox>

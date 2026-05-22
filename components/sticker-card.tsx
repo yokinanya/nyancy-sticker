@@ -13,7 +13,7 @@ export function StickerCard({ sticker, onOpen }: Props) {
     <button
       type="button"
       onClick={() => onOpen(sticker)}
-      className="group relative aspect-square w-full overflow-hidden rounded-xl border border-black/5 bg-zinc-100 transition hover:shadow-md hover:ring-2 hover:ring-accent dark:border-white/10 dark:bg-zinc-800"
+      className="motion-interactive group relative aspect-square w-full overflow-hidden rounded-lg border border-black/5 bg-white shadow-sm hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-white/10 dark:bg-zinc-900"
       aria-label={`查看 ${sticker.name}`}
     >
       <Image
@@ -21,10 +21,10 @@ export function StickerCard({ sticker, onOpen }: Props) {
         alt={sticker.name}
         fill
         sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 160px"
-        className="object-contain p-2 transition group-hover:scale-105"
+        className="object-contain p-2 transition duration-200 ease-out group-hover:scale-105"
         unoptimized={sticker.ext === "gif"}
       />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-xs text-white transition group-hover:translate-y-0">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-xs text-white transition duration-200 ease-out group-hover:translate-y-0">
         <div className="truncate font-medium">{sticker.name}</div>
         {sticker.tags.length > 0 && (
           <div className="mt-0.5 truncate opacity-80">

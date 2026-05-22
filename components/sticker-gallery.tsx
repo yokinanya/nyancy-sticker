@@ -13,9 +13,10 @@ import type { Manifest, Sticker } from "@/lib/types";
 
 interface Props {
   manifest: Manifest;
+  hideTopLevel?: boolean;
 }
 
-export function StickerGallery({ manifest }: Props) {
+export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
   const { categories, stickers } = manifest;
   const query = useFilterStore((s) => s.query);
   const category = useFilterStore((s) => s.category);
@@ -79,14 +80,15 @@ export function StickerGallery({ manifest }: Props) {
   }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <SearchBar />
       <CategoryTabs
         categories={categories}
         counts={categoryCounts}
+        hideTopLevel={hideTopLevel}
       />
       <TagFilter tags={topTags} />
-      <div className="text-xs text-zinc-500">
+      <div className="motion-panel rounded-md border border-black/5 bg-white/70 px-3 py-2 text-xs text-zinc-500 shadow-sm dark:border-white/10 dark:bg-zinc-950/60">
         共 {filtered.length} 张 {query && `· 搜索「${query}」`}
         {tags.length > 0 && ` · 标签 ${tags.map((t) => `#${t}`).join(" ")}`}
       </div>
@@ -102,7 +104,7 @@ export function StickerGallery({ manifest }: Props) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 px-4 py-16 text-center text-zinc-500 dark:border-zinc-700">
+    <div className="motion-panel flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 px-4 py-16 text-center text-zinc-500 dark:border-zinc-700">
       <div className="text-4xl">🐈‍⬛</div>
       <div className="text-sm">没找到匹配的表情包，换个关键词试试？</div>
     </div>

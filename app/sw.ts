@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
-import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
+import { NetworkOnly, Serwist } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -11,12 +11,24 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
+const dynamicPaths: RuntimeCaching = {
+  matcher: ({ url, sameOrigin }) =>
+    sameOrigin &&
+    (url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/admin") ||
+      url.pathname.startsWith("/submit") ||
+      url.pathname.startsWith("/login")),
+  handler: new NetworkOnly(),
+};
+
+const runtimeCaching: RuntimeCaching[] = [dynamicPaths, ...defaultCache];
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching,
 });
 
 serwist.addEventListeners();

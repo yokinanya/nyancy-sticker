@@ -9,6 +9,7 @@ import { childCategoryIds, topLevelCategories } from "@/lib/categories";
 interface Props {
   categories: Category[];
   counts: Record<string, number>;
+  hideTopLevel?: boolean;
 }
 
 const scrollableTabListClass =
@@ -16,7 +17,7 @@ const scrollableTabListClass =
 const tabClass =
   "w-auto! flex-[1_0_max-content]! whitespace-nowrap";
 
-export function CategoryTabs({ categories, counts }: Props) {
+export function CategoryTabs({ categories, counts, hideTopLevel = false }: Props) {
   const category = useFilterStore((s) => s.category);
   const setCategory = useFilterStore((s) => s.setCategory);
   const defaultCategory = useMemo(() => findDefaultCategory(categories), [categories]);
@@ -35,30 +36,32 @@ export function CategoryTabs({ categories, counts }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <Tabs
-        aria-label="一级分类"
-        selectedKey={activeParent?.id ?? undefined}
-        onSelectionChange={(k) => selectTopCategory(String(k))}
-      >
-        <Tabs.List
-          aria-label="一级分类"
-          className={scrollableTabListClass}
+      {hideTopLevel ? null : (
+        <Tabs
+          aria-label="角色"
+          selectedKey={activeParent?.id ?? undefined}
+          onSelectionChange={(k) => selectTopCategory(String(k))}
         >
-          {topLevelCategories(categories).map((c) => (
-            <Tabs.Tab key={c.id} id={c.id} className={tabClass}>
-              {c.name} · {counts[c.id] ?? 0}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
-      </Tabs>
+          <Tabs.List
+            aria-label="角色"
+            className={scrollableTabListClass}
+          >
+            {topLevelCategories(categories).map((c) => (
+              <Tabs.Tab key={c.id} id={c.id} className={tabClass}>
+                {c.name} · {counts[c.id] ?? 0}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs>
+      )}
       {childCategories.length > 0 ? (
         <Tabs
-          aria-label="二级分类"
+          aria-label="分类"
           selectedKey={selectedCategory ?? undefined}
           onSelectionChange={(k) => setCategory(String(k))}
         >
           <Tabs.List
-            aria-label="二级分类"
+            aria-label="分类"
             className={scrollableTabListClass}
           >
             {childCategories.map((c) => (

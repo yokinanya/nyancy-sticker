@@ -42,9 +42,11 @@ export default async function RootLayout({
     <html lang={lang} suppressHydrationWarning>
       <body>
         <Providers lang={lang}>
-          <div className="flex h-dvh flex-col">
+          <div className="flex min-h-dvh flex-col">
             <SiteHeader />
-            <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+            <main className="flex-1 bg-[linear-gradient(180deg,rgb(250_250_250),rgb(244_244_245))] dark:bg-[linear-gradient(180deg,rgb(9_9_11),rgb(24_24_27))]">
+              {children}
+            </main>
           </div>
         </Providers>
       </body>

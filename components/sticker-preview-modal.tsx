@@ -60,12 +60,17 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
     );
   };
 
-  const onDownload = () => {
+  const onDownload = async () => {
     setBusy("download");
-    downloadFile(sticker.src, filename);
-    pushRecent(sticker.id);
-    setBusy(null);
-    flash({ msg: "已开始下载", tone: "success" });
+    try {
+      await downloadFile(sticker.src, filename);
+      pushRecent(sticker.id);
+      flash({ msg: "已开始下载", tone: "success" });
+    } catch {
+      flash({ msg: "下载失败，已尝试新标签页打开", tone: "error" });
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -122,23 +127,17 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
             </Modal.Body>
             <Modal.Footer>
               <div className="flex w-full justify-center gap-3">
-                {isGif ? (
-                  <Button isPending={busy === "download"} onPress={onDownload}>
-                    下载 GIF
-                  </Button>
-                ) : (
+                {!isGif ? (
                   <Button isPending={busy === "image"} onPress={onCopyImage}>
                     复制图片
                   </Button>
-                )}
+                ) : null}
                 <Button variant="secondary" isPending={busy === "link"} onPress={onCopyLink}>
                   复制链接
                 </Button>
-                {!isGif ? (
-                  <Button variant="ghost" isPending={busy === "download"} onPress={onDownload}>
-                    下载
-                  </Button>
-                ) : null}
+                <Button variant="ghost" isPending={busy === "download"} onPress={onDownload}>
+                  下载
+                </Button>
               </div>
             </Modal.Footer>
           </Modal.Dialog>

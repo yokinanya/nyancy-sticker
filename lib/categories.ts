@@ -46,7 +46,7 @@ export function countStickersByCategoryTree(
 }
 
 export function categoryLabel(category: Category) {
-  return category.parentId ? `  ${category.name} (${category.id})` : `${category.name} (${category.id})`;
+  return category.parentId ? `  ${category.name}` : category.name;
 }
 
 export function topLevelCategories(categories: readonly Category[]) {

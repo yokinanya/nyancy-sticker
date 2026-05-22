@@ -1,0 +1,87 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Button, Input, Modal } from "@heroui/react";
+import type { Category } from "@/lib/types";
+import { createSubcategoryForSubmit } from "./actions";
+
+interface Props {
+  parentId: string;
+  parentName: string;
+  onClose: () => void;
+  onCreated: (cat: Category) => void;
+}
+
+export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreated }: Props) {
+  const [pending, startTransition] = useTransition();
+  const [id, setId] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    setError(null);
+    const fd = new FormData();
+    fd.set("parentId", parentId);
+    fd.set("categoryId", id);
+    fd.set("categoryName", name);
+    startTransition(async () => {
+      try {
+        const result = await createSubcategoryForSubmit(fd);
+        onCreated({ id: result.id, name: result.name, parentId });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "创建失败。");
+      }
+    });
+  };
+
+  return (
+    <Modal>
+      <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
+        <Modal.Container>
+          <Modal.Dialog className="max-w-md border border-default-300 bg-content2 shadow-2xl">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Heading>在「{parentName}」下新建子分类</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-default-500">分类 ID（slug）</label>
+                  <Input
+                    value={id}
+                    onChange={(e) => setId(e.target.value)}
+                    placeholder="例如：2026 或 daily"
+                    className="bg-content1 px-3"
+                  />
+                  <span className="text-[10px] text-default-400">
+                    字母数字下划线短横线，长度 2-32。最终 ID 会拼成「{parentId}_{id || "..."}」。
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-default-500">分类显示名</label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="例如：2026 或 日常"
+                    className="bg-content1 px-3"
+                  />
+                </div>
+                {error ? <p className="text-sm text-danger">{error}</p> : null}
+              </div>
+            </Modal.Body>
+            <Modal.Footer>
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="ghost" onPress={onClose}>
+                  取消
+                </Button>
+                <Button variant="primary" isPending={pending} onPress={submit}>
+                  创建
+                </Button>
+              </div>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
+  );
+}
