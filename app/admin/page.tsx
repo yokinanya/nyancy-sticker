@@ -10,7 +10,7 @@ export default async function AdminPage() {
   const manifest = await readManifestFile();
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="mx-auto h-full w-full max-w-7xl overflow-auto px-4 py-6">
       <ManifestEditor manifest={manifest} />
     </div>
   );
@@ -18,7 +18,7 @@ export default async function AdminPage() {
 
 function UnavailablePage() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="mx-auto h-full w-full max-w-7xl overflow-auto px-4 py-6">
       <div className="rounded-lg border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
         本地管理页只允许在 development 环境使用。
       </div>

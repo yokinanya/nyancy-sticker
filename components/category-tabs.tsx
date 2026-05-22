@@ -11,6 +11,11 @@ interface Props {
   counts: Record<string, number>;
 }
 
+const scrollableTabListClass =
+  "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+const tabClass =
+  "w-auto! flex-[1_0_max-content]! whitespace-nowrap";
+
 export function CategoryTabs({ categories, counts }: Props) {
   const category = useFilterStore((s) => s.category);
   const setCategory = useFilterStore((s) => s.setCategory);
@@ -35,9 +40,12 @@ export function CategoryTabs({ categories, counts }: Props) {
         selectedKey={activeParent?.id ?? undefined}
         onSelectionChange={(k) => selectTopCategory(String(k))}
       >
-        <Tabs.List aria-label="一级分类">
+        <Tabs.List
+          aria-label="一级分类"
+          className={scrollableTabListClass}
+        >
           {topLevelCategories(categories).map((c) => (
-            <Tabs.Tab key={c.id} id={c.id}>
+            <Tabs.Tab key={c.id} id={c.id} className={tabClass}>
               {c.name} · {counts[c.id] ?? 0}
             </Tabs.Tab>
           ))}
@@ -49,9 +57,12 @@ export function CategoryTabs({ categories, counts }: Props) {
           selectedKey={selectedCategory ?? undefined}
           onSelectionChange={(k) => setCategory(String(k))}
         >
-          <Tabs.List aria-label="二级分类">
+          <Tabs.List
+            aria-label="二级分类"
+            className={scrollableTabListClass}
+          >
             {childCategories.map((c) => (
-              <Tabs.Tab key={c.id} id={c.id}>
+              <Tabs.Tab key={c.id} id={c.id} className={tabClass}>
                 {c.name} · {counts[c.id] ?? 0}
               </Tabs.Tab>
             ))}

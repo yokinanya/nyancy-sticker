@@ -52,7 +52,7 @@ export function StickerGrid({ stickers, onOpen }: Props) {
   return (
     <div
       ref={parentRef}
-      className="scrollbar-thin h-[calc(100vh-260px)] min-h-[480px] w-full overflow-auto"
+      className="scrollbar-thin min-h-0 flex-1 overflow-auto"
     >
       <div
         style={{

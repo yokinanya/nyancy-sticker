@@ -5,7 +5,7 @@ import type { Manifest } from "@/lib/types";
 export default function HomePage() {
   const manifest = manifestData as Manifest;
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="mx-auto flex h-full w-full max-w-7xl flex-col px-4 py-6">
       <StickerGallery manifest={manifest} />
     </div>
   );

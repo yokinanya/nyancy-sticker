@@ -79,7 +79,7 @@ export function StickerGallery({ manifest }: Props) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <SearchBar />
       <CategoryTabs
         categories={categories}
