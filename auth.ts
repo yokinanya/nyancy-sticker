@@ -10,6 +10,10 @@ const adminLogins = (process.env.ADMIN_GITHUB_LOGINS ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
+interface GitHubProfile {
+  login?: unknown;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db),
   providers: [GitHub],
@@ -17,8 +21,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/login" },
   callbacks: {
     async signIn({ user, profile }) {
-      const login = (profile as { login?: string } | undefined)?.login;
-      if (!login || !user.id) return false;
+      const login = readGitHubLogin(profile);
+      if (!user.id) throw new Error("GitHub 登录缺少用户 id，无法写入用户资料。");
       const patch: { githubLogin: string; role?: "user" | "admin" } = { githubLogin: login };
       // 仅当 ADMIN_GITHUB_LOGINS 非空时启用强制对齐，避免误清环境变量导致全员降级。
       if (adminLogins.length > 0) {
@@ -55,3 +59,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+function readGitHubLogin(profile: unknown): string {
+  const login = (profile as GitHubProfile | undefined)?.login;
+  if (typeof login !== "string" || login.trim() === "") {
+    throw new Error("GitHub 登录响应缺少 login，无法写入 githubLogin。");
+  }
+  return login;
+}

@@ -38,7 +38,7 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
     <Modal>
       <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal.Container>
-          <Modal.Dialog className="max-w-md border border-default-300 bg-content2 shadow-2xl">
+          <Modal.Dialog className="motion-panel modal-surface w-full max-w-md">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading>在「{parentName}」下新建子分类</Modal.Heading>
@@ -51,7 +51,7 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
                     value={id}
                     onChange={(e) => setId(e.target.value)}
                     placeholder="例如：2026 或 daily"
-                    className="bg-content1 px-3"
+                    className="field-control bg-content1 px-3"
                   />
                   <span className="text-[10px] text-default-400">
                     字母数字下划线短横线，长度 2-32。最终 ID 会拼成「{parentId}_{id || "..."}」。
@@ -63,14 +63,14 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="例如：2026 或 日常"
-                    className="bg-content1 px-3"
+                    className="field-control bg-content1 px-3"
                   />
                 </div>
                 {error ? <p className="text-sm text-danger">{error}</p> : null}
               </div>
             </Modal.Body>
             <Modal.Footer>
-              <div className="flex w-full justify-end gap-2">
+              <div className="flex w-full flex-col justify-end gap-2 sm:flex-row">
                 <Button variant="ghost" onPress={onClose}>
                   取消
                 </Button>

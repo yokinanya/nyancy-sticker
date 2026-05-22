@@ -162,11 +162,6 @@ async function ensureSubcategoryExists(id: string): Promise<void> {
   }
 }
 
-async function ensureCategoryExists(id: string): Promise<void> {
-  const found = await db.query.categories.findFirst({ where: eq(categories.id, id) });
-  if (!found) throw new Error(`分类不存在：${id}`);
-}
-
 function readSelectedIds(formData: FormData): Set<string> {
   const ids = formData.getAll("ids").filter((id): id is string => typeof id === "string");
   if (ids.length === 0) throw new Error("请先选择至少一张表情。");

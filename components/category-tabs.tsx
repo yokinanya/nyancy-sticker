@@ -15,7 +15,7 @@ interface Props {
 const scrollableTabListClass =
   "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 const tabClass =
-  "w-auto! flex-[1_0_max-content]! whitespace-nowrap";
+  "motion-interactive w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
 
 export function CategoryTabs({ categories, counts, hideTopLevel = false }: Props) {
   const category = useFilterStore((s) => s.category);

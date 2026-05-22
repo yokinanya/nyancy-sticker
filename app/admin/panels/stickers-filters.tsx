@@ -49,6 +49,7 @@ export function StickersFilters({ categories, current }: Props) {
   const [q, setQ] = useState(current.q ?? "");
   const [sort, setSort] = useState(current.sort ?? "newest");
   const [pageSize, setPageSize] = useState(String(current.pageSize ?? 20));
+  const [expanded, setExpanded] = useState(false);
 
   const topLevels = categories.filter((c) => !c.parentId);
   const children = character ? categories.filter((c) => c.parentId === character) : [];
@@ -79,69 +80,99 @@ export function StickersFilters({ categories, current }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-default-200 bg-content1 p-4">
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        <Field label="状态">
-          <OptionSelect
-            ariaLabel="状态"
-            value={status}
-            onChange={setStatus}
-            options={STATUS_OPTIONS}
-          />
-        </Field>
-        <Field label="角色">
-          <CategorySelect
-            categories={[{ id: "", name: "全部角色" }, ...topLevels]}
-            value={character}
-            onChange={(v) => {
-              setCharacter(v);
-              setCategory("");
-            }}
-          />
-        </Field>
-        <Field label="分类">
-          {character ? (
-            <CategorySelect
-              categories={[{ id: "", name: "（不限）" }, ...children]}
-              value={category}
-              onChange={setCategory}
-            />
-          ) : (
-            <span className="self-center text-xs text-default-400">先选角色</span>
-          )}
-        </Field>
-        <Field label="标签">
-          <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="单个标签" />
-        </Field>
-        <Field label="关键字（名字或 ID）">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索..." />
-        </Field>
-        <Field label="排序">
-          <OptionSelect
-            ariaLabel="排序"
-            value={sort}
-            onChange={setSort}
-            options={SORT_OPTIONS}
-          />
-        </Field>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs text-default-500">
-          <span>每页</span>
-          <OptionSelect
-            ariaLabel="每页"
-            value={pageSize}
-            onChange={setPageSize}
-            options={PAGE_SIZE_OPTIONS}
-          />
+    <section className="admin-panel p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="admin-section-title">筛选贴纸</h2>
+          <p className="admin-section-description mt-1">{filterSummary(current)}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onPress={reset} isPending={pending}>
-            重置
-          </Button>
-          <Button variant="primary" onPress={apply} isPending={pending}>
-            应用筛选
-          </Button>
+        <Button
+          variant="ghost"
+          className="md:hidden"
+          onPress={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "收起筛选" : "展开筛选"}
+        </Button>
+      </div>
+      <div className="collapsible-panel md-open" data-open={expanded}>
+        <div className="collapsible-body">
+          <div className="mt-3 grid gap-3">
+            <div className="grid grid-cols-2 items-end gap-2 lg:grid-cols-[minmax(8rem,12rem)_minmax(8rem,12rem)_minmax(8rem,12rem)_minmax(8rem,12rem)]">
+              <Field label="状态">
+                <OptionSelect
+                  ariaLabel="状态"
+                  value={status}
+                  onChange={setStatus}
+                  options={STATUS_OPTIONS}
+                />
+              </Field>
+              <Field label="角色">
+                <CategorySelect
+                  categories={[{ id: "", name: "全部角色" }, ...topLevels]}
+                  value={character}
+                  onChange={(v) => {
+                    setCharacter(v);
+                    setCategory("");
+                  }}
+                />
+              </Field>
+              <Field label="分类">
+                {character ? (
+                  <CategorySelect
+                    categories={[{ id: "", name: "（不限）" }, ...children]}
+                    value={category}
+                    onChange={setCategory}
+                  />
+                ) : (
+                  <div className="field-trigger flex items-center text-sm text-default-400">
+                    先选角色
+                  </div>
+                )}
+              </Field>
+              <Field label="排序">
+                <OptionSelect
+                  ariaLabel="排序"
+                  value={sort}
+                  onChange={setSort}
+                  options={SORT_OPTIONS}
+                />
+              </Field>
+            </div>
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-2 lg:grid-cols-[minmax(10rem,14rem)_minmax(12rem,1fr)_minmax(8rem,10rem)_auto_auto]">
+              <Field label="标签">
+                <Input
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  placeholder="单个标签"
+                  className="field-control"
+                />
+              </Field>
+              <Field label="关键字">
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="名字或 ID"
+                  className="field-control"
+                />
+              </Field>
+              <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-2 lg:col-span-3">
+                <Field label="每页">
+                  <OptionSelect
+                    ariaLabel="每页"
+                    value={pageSize}
+                    onChange={setPageSize}
+                    options={PAGE_SIZE_OPTIONS}
+                  />
+                </Field>
+                <Button variant="ghost" onPress={reset} isPending={pending}>
+                  重置
+                </Button>
+                <Button variant="primary" onPress={apply} isPending={pending}>
+                  应用筛选
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -174,14 +205,19 @@ function OptionSelect({
       selectedKey={value}
       onSelectionChange={(key) => onChange(String(key))}
     >
-      <Select.Trigger>
+      <Select.Trigger className="field-trigger">
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover>
+      <Select.Popover className="motion-popover popover-surface">
         <ListBox>
           {options.map((o) => (
-            <ListBox.Item key={o.value} id={o.value} textValue={o.label}>
+            <ListBox.Item
+              key={o.value}
+              id={o.value}
+              textValue={o.label}
+              className="listbox-option"
+            >
               {o.label}
             </ListBox.Item>
           ))}
@@ -194,4 +230,15 @@ function OptionSelect({
 function setOrDel(params: URLSearchParams, key: string, value: string | undefined) {
   if (value) params.set(key, value);
   else params.delete(key);
+}
+
+function filterSummary(current: Current) {
+  const parts = [
+    current.status ? "状态" : null,
+    current.character ? "角色" : null,
+    current.category ? "分类" : null,
+    current.tag ? `#${current.tag}` : null,
+    current.q ? `“${current.q}”` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : "全部贴纸";
 }

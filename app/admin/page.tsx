@@ -38,22 +38,19 @@ export default async function AdminPage({ searchParams }: PageProps) {
   const counts = await countByStatus();
 
   return (
-    <div className="motion-page mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">后台管理</h1>
-        <p className="mt-1 text-sm text-default-500">
-          已发布 {counts.approved} 张 · 待审核 {counts.pending} 条 · 已拒绝 {counts.rejected} 条
-        </p>
+    <div className="motion-page admin-shell">
+      <div className="min-w-0">
+        <AdminTabs tab={tab} pendingCount={counts.pending} isAdmin={isAdmin} />
       </div>
 
-      <AdminTabs tab={tab} pendingCount={counts.pending} isAdmin={isAdmin} />
-
-      {tab === "submissions" && <SubmissionsPanel />}
-      {tab === "stickers" && <StickersPanel searchParams={sp} />}
-      {tab === "categories" && <CategoriesPanel />}
-      {tab === "tags" && <TagsPanel />}
-      {tab === "upload" && <UploadFormPanel />}
-      {tab === "users" && isAdmin && <UsersPanel searchParams={sp} />}
+      <section className="min-w-0">
+        {tab === "submissions" && <SubmissionsPanel />}
+        {tab === "stickers" && <StickersPanel searchParams={sp} />}
+        {tab === "categories" && <CategoriesPanel />}
+        {tab === "tags" && <TagsPanel />}
+        {tab === "upload" && <UploadFormPanel />}
+        {tab === "users" && isAdmin && <UsersPanel searchParams={sp} />}
+      </section>
     </div>
   );
 }

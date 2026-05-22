@@ -25,13 +25,14 @@ export function TagFilter({ tags }: Props) {
             size="sm"
             variant={active ? "primary" : "ghost"}
             onPress={() => toggle(tag)}
+            className="motion-interactive"
           >
             #{tag} <span className="opacity-60">·{count}</span>
           </Button>
         );
       })}
       {selected.length > 0 && (
-        <Button size="sm" variant="ghost" onPress={clear}>
+        <Button size="sm" variant="ghost" onPress={clear} className="motion-interactive">
           清空标签
         </Button>
       )}

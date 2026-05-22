@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "./search-bar";
 import { CategoryTabs } from "./category-tabs";
 import { TagFilter } from "./tag-filter";
@@ -8,7 +8,10 @@ import { StickerGrid } from "./sticker-grid";
 import { StickerPreviewModal } from "./sticker-preview-modal";
 import { useFilterStore } from "@/lib/store";
 import { createFuse, filterStickers } from "@/lib/search";
-import { categoryMatches, countStickersByCategoryTree } from "@/lib/categories";
+import {
+  countStickersByCategoryTree,
+  createCategoryDescendantMap,
+} from "@/lib/categories";
 import type { Manifest, Sticker } from "@/lib/types";
 
 interface Props {
@@ -21,6 +24,13 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
   const query = useFilterStore((s) => s.query);
   const category = useFilterStore((s) => s.category);
   const tags = useFilterStore((s) => s.tags);
+  const deferredQuery = useDeferredValue(query);
+  const deferredCategory = useDeferredValue(category);
+  const deferredTags = useDeferredValue(tags);
+  const isFiltering =
+    deferredQuery !== query ||
+    deferredCategory !== category ||
+    deferredTags !== tags;
 
   // Fuse 索引在 idle 时构建
   const [fuse, setFuse] = useState<ReturnType<typeof createFuse> | null>(null);
@@ -31,9 +41,24 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
     idle(() => setFuse(createFuse(stickers)));
   }, [stickers]);
 
+  const descendantMap = useMemo(
+    () => createCategoryDescendantMap(categories),
+    [categories],
+  );
+
+  const selectedCategoryIds = useMemo(() => {
+    if (!deferredCategory) return null;
+    return descendantMap.get(deferredCategory) ?? new Set([deferredCategory]);
+  }, [deferredCategory, descendantMap]);
+
   const filtered = useMemo(
-    () => filterStickers(stickers, fuse, { query, category, tags, categories }),
-    [stickers, fuse, query, category, tags, categories],
+    () =>
+      filterStickers(stickers, fuse, {
+        query: deferredQuery,
+        categoryIds: selectedCategoryIds,
+        tags: deferredTags,
+      }),
+    [stickers, fuse, deferredQuery, selectedCategoryIds, deferredTags],
   );
 
   const categoryCounts = useMemo(() => {
@@ -42,8 +67,11 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
 
   const topTags = useMemo(() => {
     const counts = new Map<string, number>();
-    const pool = category
-      ? stickers.filter((s) => categoryMatches(categories, s.category, category))
+    const tagCategoryIds = category
+      ? descendantMap.get(category) ?? new Set([category])
+      : null;
+    const pool = tagCategoryIds
+      ? stickers.filter((s) => tagCategoryIds.has(s.category))
       : stickers;
     for (const s of pool) {
       for (const t of s.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
@@ -51,14 +79,14 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
     return [...counts.entries()]
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count);
-  }, [stickers, category, categories]);
+  }, [stickers, category, descendantMap]);
 
   const [active, setActive] = useState<Sticker | null>(null);
   const [open, setOpen] = useState(false);
-  const onOpen = (s: Sticker) => {
+  const onOpen = useCallback((s: Sticker) => {
     setActive(s);
     setOpen(true);
-  };
+  }, []);
 
   // 全局快捷键：/ 聚焦搜索
   useEffect(() => {
@@ -91,6 +119,7 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
       <div className="motion-panel rounded-md border border-black/5 bg-white/70 px-3 py-2 text-xs text-zinc-500 shadow-sm dark:border-white/10 dark:bg-zinc-950/60">
         共 {filtered.length} 张 {query && `· 搜索「${query}」`}
         {tags.length > 0 && ` · 标签 ${tags.map((t) => `#${t}`).join(" ")}`}
+        {isFiltering && <span className="ml-2 text-accent">更新中...</span>}
       </div>
       {filtered.length === 0 ? (
         <EmptyState />

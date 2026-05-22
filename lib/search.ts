@@ -1,8 +1,13 @@
 "use client";
 
 import Fuse from "fuse.js";
-import { categoryMatches } from "@/lib/categories";
-import type { Category, Sticker } from "./types";
+import type { Sticker } from "./types";
+
+interface FilterOptions {
+  query: string;
+  categoryIds: ReadonlySet<string> | null;
+  tags: readonly string[];
+}
 
 export function createFuse(stickers: Sticker[]) {
   return new Fuse(stickers, {
@@ -20,21 +25,15 @@ export function createFuse(stickers: Sticker[]) {
 export function filterStickers(
   stickers: Sticker[],
   fuse: Fuse<Sticker> | null,
-  opts: { query: string; category: string | null; tags: string[]; categories: Category[] },
+  opts: FilterOptions,
 ): Sticker[] {
-  let pool = stickers;
-  if (opts.category) {
-    pool = pool.filter((s) => categoryMatches(opts.categories, s.category, opts.category!));
-  }
-  if (opts.tags.length > 0)
-    pool = pool.filter((s) => opts.tags.every((t) => s.tags.includes(t)));
-  if (!opts.query.trim() || !fuse) return pool;
-  // Fuse 在过滤后的子集上重新搜索：构建子集索引
-  const sub = new Fuse(pool, {
-    keys: ["name", "tags", "category"],
-    threshold: 0.35,
-    ignoreLocation: true,
-    minMatchCharLength: 1,
-  });
-  return sub.search(opts.query.trim()).map((r) => r.item);
+  const query = opts.query.trim();
+  const pool = query && fuse ? fuse.search(query).map((r) => r.item) : stickers;
+  return pool.filter((sticker) => matchesFilters(sticker, opts));
+}
+
+function matchesFilters(sticker: Sticker, opts: FilterOptions) {
+  if (opts.categoryIds && !opts.categoryIds.has(sticker.category)) return false;
+  if (opts.tags.length === 0) return true;
+  return opts.tags.every((tag) => sticker.tags.includes(tag));
 }

@@ -7,7 +7,10 @@ import { useEffect, useState } from "react";
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(id);
+  }, []);
 
   const current = mounted ? (resolvedTheme ?? theme) : "light";
   const isDark = current === "dark";
@@ -18,6 +21,7 @@ export function ThemeToggle() {
       variant="ghost"
       aria-label={isDark ? "切换到浅色模式" : "切换到深色模式"}
       onPress={() => setTheme(isDark ? "light" : "dark")}
+      className="motion-interactive"
     >
       {/* 简单的太阳/月亮 SVG，避免引入图标库 */}
       {isDark ? (

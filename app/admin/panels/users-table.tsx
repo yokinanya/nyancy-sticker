@@ -75,7 +75,24 @@ export function UsersTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-lg border border-default-200 bg-content1">
+      <div className="mobile-card-list">
+        {items.length === 0 ? (
+          <p className="admin-panel p-6 text-center text-sm text-default-400">暂无用户。</p>
+        ) : (
+          items.map((u) => (
+            <UserMobileCard
+              key={u.id}
+              user={u}
+              currentUserId={currentUserId}
+              seedAdmins={seedAdmins}
+              pending={pending}
+              onChangeRole={submitRole}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="desktop-table-wrap overflow-x-auto rounded-lg border border-default-200 bg-content1">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-default-200 text-xs text-default-500">
             <tr>
@@ -99,7 +116,10 @@ export function UsersTable({
                 const isSeed = !!u.githubLogin && seedAdmins.includes(u.githubLogin);
                 const locked = isSelf || isSeed;
                 return (
-                  <tr key={u.id} className="border-b border-default-100 last:border-0">
+                  <tr
+                    key={u.id}
+                    className="motion-list-item motion-interactive border-b border-default-100 last:border-0 hover:bg-default-50 dark:hover:bg-default-100/5"
+                  >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         {u.image ? (
@@ -124,7 +144,7 @@ export function UsersTable({
                       </div>
                     </td>
                     <td className="p-3 text-xs">
-                      {u.githubLogin ? `@${u.githubLogin}` : "—"}
+                      <GithubLogin login={u.githubLogin} />
                     </td>
                     <td className="p-3 text-xs text-default-500">
                       {new Date(u.createdAt).toLocaleString("zh-CN")}
@@ -169,7 +189,7 @@ export function UsersTable({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-default-500">
+      <div className="admin-toolbar flex flex-wrap items-center justify-between gap-2 p-3 text-sm text-default-500">
         <span>
           第 {page} / {pageCount} 页 · 共 {total} 位用户
         </span>
@@ -196,6 +216,82 @@ export function UsersTable({
   );
 }
 
+function UserMobileCard({
+  user,
+  currentUserId,
+  seedAdmins,
+  pending,
+  onChangeRole,
+}: {
+  user: AdminUserRow;
+  currentUserId: string;
+  seedAdmins: readonly string[];
+  pending: boolean;
+  onChangeRole: (userId: string, role: Role) => void;
+}) {
+  const isSelf = user.id === currentUserId;
+  const isSeed = !!user.githubLogin && seedAdmins.includes(user.githubLogin);
+  const locked = isSelf || isSeed;
+  return (
+    <article className="motion-list-item admin-panel p-3">
+      <div className="flex items-start gap-3">
+        {user.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.image}
+            alt={user.name ?? user.githubLogin ?? "用户"}
+            className="h-10 w-10 rounded-full"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-default-200 text-sm">
+            {(user.name ?? user.githubLogin ?? "?").slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-medium">{user.name ?? "（未填名字）"}</h3>
+          <div className="mt-1 text-xs text-default-500">
+            <GithubLogin login={user.githubLogin} compact /> ·{" "}
+            <span>{new Date(user.createdAt).toLocaleDateString("zh-CN")}</span>
+          </div>
+          {user.email ? <p className="mt-1 truncate text-xs text-default-400">{user.email}</p> : null}
+        </div>
+        <Chip size="sm" variant={ROLE_COLOR[user.role]}>
+          <Chip.Label>{ROLE_LABEL[user.role]}</Chip.Label>
+        </Chip>
+      </div>
+      <div className="mt-3 border-t border-default-100 pt-3">
+        {locked ? (
+          <span className="text-xs text-default-400">
+            {isSelf ? "不能修改自己" : "受环境变量保护"}
+          </span>
+        ) : (
+          <RoleSelector
+            value={user.role}
+            disabled={pending}
+            onChange={(role) => onChangeRole(user.id, role)}
+          />
+        )}
+      </div>
+    </article>
+  );
+}
+
+function GithubLogin({
+  login,
+  compact = false,
+}: {
+  login: string | null;
+  compact?: boolean;
+}) {
+  if (login) return <span>@{login}</span>;
+  return (
+    <span className="text-warning">
+      {compact ? "未写入 GitHub login" : "未写入 GitHub login，重新 GitHub 登录后会补写"}
+    </span>
+  );
+}
+
 function RoleSelector({
   value,
   disabled,
@@ -215,14 +311,19 @@ function RoleSelector({
         if (next !== value) onChange(next);
       }}
     >
-      <Select.Trigger>
+      <Select.Trigger className="field-trigger">
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover>
+      <Select.Popover className="motion-popover popover-surface">
         <ListBox>
           {ROLE_OPTIONS.map((o) => (
-            <ListBox.Item key={o.value} id={o.value} textValue={o.label}>
+            <ListBox.Item
+              key={o.value}
+              id={o.value}
+              textValue={o.label}
+              className="listbox-option"
+            >
               {o.label}
             </ListBox.Item>
           ))}

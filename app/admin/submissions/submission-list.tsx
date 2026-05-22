@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input } from "@heroui/react";
@@ -86,12 +87,16 @@ function SubmissionCard({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-default-200 bg-content1 p-4 md:flex-row">
-      <div className="flex-shrink-0 md:w-48">
-        <img
+    <article className="motion-list-item admin-panel overflow-hidden p-4">
+      <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+      <div className="flex-shrink-0">
+        <Image
           src={submission.src}
           alt={submission.name}
-          className="max-h-48 w-full rounded-md object-contain"
+          width={submission.width}
+          height={submission.height}
+          className="max-h-56 w-full rounded-lg bg-default-50 object-contain"
+          unoptimized
         />
         <p className="mt-2 text-xs text-default-500">
           {submission.width}×{submission.height}
@@ -107,7 +112,7 @@ function SubmissionCard({
       <div className="flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-default-500">名字</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="field-control" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-default-500">分类</label>
@@ -115,13 +120,13 @@ function SubmissionCard({
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-default-500">标签（逗号分隔）</label>
-          <Input value={tags} onChange={(e) => setTags(e.target.value)} />
+          <Input value={tags} onChange={(e) => setTags(e.target.value)} className="field-control" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-default-500">拒绝理由（可选，拒绝时使用）</label>
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} className="field-control" />
         </div>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-col gap-2 border-t border-default-100 pt-3 sm:flex-row">
           <Button size="sm" variant="primary" isPending={pending} onPress={onApprove}>
             批准
           </Button>
@@ -131,6 +136,7 @@ function SubmissionCard({
         </div>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
       </div>
-    </div>
+      </div>
+    </article>
   );
 }

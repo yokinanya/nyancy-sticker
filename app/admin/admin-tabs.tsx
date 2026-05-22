@@ -12,6 +12,10 @@ const BASE_TABS = [
 ] as const;
 
 const USERS_TAB = { key: "users", title: "用户" } as const;
+const scrollableTabListClass =
+  "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+const tabClass =
+  "motion-interactive w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
 
 export type AdminTab =
   | (typeof BASE_TABS)[number]["key"]
@@ -32,14 +36,22 @@ export function AdminTabs({ tab, pendingCount, isAdmin }: Props) {
       selectedKey={tab}
       onSelectionChange={(key) => router.push(`/admin?tab=${String(key)}`)}
     >
-      <Tabs.List aria-label="后台管理">
-        {tabs.map((t) => (
-          <Tabs.Tab key={t.key} id={t.key}>
-            {t.key === "submissions" && pendingCount > 0
-              ? `${t.title} · ${pendingCount}`
-              : t.title}
-          </Tabs.Tab>
-        ))}
+      <Tabs.List aria-label="后台管理" className={scrollableTabListClass}>
+        {tabs.map((item) => {
+          const label =
+            item.key === "submissions" && pendingCount > 0
+              ? `${item.title} · ${pendingCount}`
+              : item.title;
+          return (
+            <Tabs.Tab
+              key={item.key}
+              id={item.key}
+              className={tabClass}
+            >
+              {label}
+            </Tabs.Tab>
+          );
+        })}
       </Tabs.List>
     </Tabs>
   );

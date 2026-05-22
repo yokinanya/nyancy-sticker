@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Button, Modal } from "@heroui/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { copyImage, copyText, downloadFile } from "@/lib/clipboard";
 import { useFilterStore } from "@/lib/store";
 import type { Sticker } from "@/lib/types";
@@ -18,7 +18,14 @@ type Toast = { msg: string; tone: "success" | "error" } | null;
 export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
   const [busy, setBusy] = useState<"image" | "link" | "download" | null>(null);
   const [toast, setToast] = useState<Toast>(null);
+  const toastTimer = useRef<number | null>(null);
   const pushRecent = useFilterStore((s) => s.pushRecent);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   if (!sticker) return null;
 
@@ -26,11 +33,13 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
   const isGif = sticker.ext === "gif";
 
   const flash = (t: Toast, ms = 2000) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
     setToast(t);
-    if (t) setTimeout(() => setToast(null), ms);
+    if (t) toastTimer.current = window.setTimeout(() => setToast(null), ms);
   };
 
   const onCopyImage = async () => {
+    if (busy) return;
     setBusy("image");
     const r = await copyImage(sticker.src);
     setBusy(null);
@@ -49,6 +58,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
   };
 
   const onCopyLink = async () => {
+    if (busy) return;
     setBusy("link");
     const ok = await copyText(sticker.src);
     setBusy(null);
@@ -61,6 +71,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
   };
 
   const onDownload = async () => {
+    if (busy) return;
     setBusy("download");
     try {
       await downloadFile(sticker.src, filename);
@@ -77,7 +88,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
     <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
         <Modal.Container>
-          <Modal.Dialog className="max-w-lg">
+          <Modal.Dialog className="motion-panel modal-surface w-full max-w-lg">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading>{sticker.name}</Modal.Heading>
@@ -126,16 +137,33 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
               </div>
             </Modal.Body>
             <Modal.Footer>
-              <div className="flex w-full justify-center gap-3">
+              <div className="flex w-full flex-col justify-center gap-2 sm:flex-row sm:gap-3">
                 {!isGif ? (
-                  <Button isPending={busy === "image"} onPress={onCopyImage}>
+                  <Button
+                    isDisabled={busy !== null && busy !== "image"}
+                    isPending={busy === "image"}
+                  onPress={onCopyImage}
+                    className="motion-interactive"
+                  >
                     复制图片
                   </Button>
                 ) : null}
-                <Button variant="secondary" isPending={busy === "link"} onPress={onCopyLink}>
+                <Button
+                  variant="secondary"
+                  isDisabled={busy !== null && busy !== "link"}
+                  isPending={busy === "link"}
+                  onPress={onCopyLink}
+                  className="motion-interactive"
+                >
                   复制链接
                 </Button>
-                <Button variant="ghost" isPending={busy === "download"} onPress={onDownload}>
+                <Button
+                  variant="ghost"
+                  isDisabled={busy !== null && busy !== "download"}
+                  isPending={busy === "download"}
+                  onPress={onDownload}
+                  className="motion-interactive"
+                >
                   下载
                 </Button>
               </div>

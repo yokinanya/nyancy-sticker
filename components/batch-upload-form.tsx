@@ -142,7 +142,10 @@ export function BatchUploadForm({
       const data = (await res.json()) as
         | { ok: true; existing: { hash: string }[] }
         | { ok: false; error: string };
-      if (!data.ok) return;
+      if (!data.ok) {
+        setGlobalMessage(data.error);
+        return;
+      }
       const exists = new Set(data.existing.map((e) => e.hash));
       setItems((prev) =>
         prev.map((i) =>
@@ -151,8 +154,8 @@ export function BatchUploadForm({
             : i,
         ),
       );
-    } catch {
-      // 静默失败，不阻止用户提交
+    } catch (e) {
+      setGlobalMessage(e instanceof Error ? e.message : "重复检测失败。");
     }
   };
 
@@ -212,20 +215,20 @@ export function BatchUploadForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="grid gap-3 rounded-lg border border-default-200 bg-content1 p-4 md:grid-cols-3">
-        <Field label="角色">
-          <PlainSelect
-            ariaLabel="角色"
-            value={character}
-            onChange={(v) => {
-              setCharacter(v);
-              setSubCategory("");
-            }}
-            options={topLevels.map((c) => ({ value: c.id, label: c.name }))}
-          />
-        </Field>
-        <Field label="子分类">
-          <div className="flex items-center gap-2">
+      <section className="admin-panel flex flex-col gap-3 p-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+          <Field label="角色">
+            <PlainSelect
+              ariaLabel="角色"
+              value={character}
+              onChange={(v) => {
+                setCharacter(v);
+                setSubCategory("");
+              }}
+              options={topLevels.map((c) => ({ value: c.id, label: c.name }))}
+            />
+          </Field>
+          <Field label="子分类">
             <PlainSelect
               ariaLabel="子分类"
               value={subCategory || "__placeholder"}
@@ -238,20 +241,22 @@ export function BatchUploadForm({
                 ...subCategories.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
-            <Button
-              variant="ghost"
-              isDisabled={!character || !allowCreateSubcategory}
-              onPress={() => setCreateOpen(true)}
-            >
-              + 新建
-            </Button>
-          </div>
-        </Field>
+          </Field>
+          <Button
+            variant="ghost"
+            isDisabled={!character || !allowCreateSubcategory}
+            onPress={() => setCreateOpen(true)}
+            className="md:min-w-24"
+          >
+            + 新建
+          </Button>
+        </div>
         <Field label="默认标签（每张可单独追加）">
           <Input
             value={defaultTags}
             onChange={(e) => setDefaultTags(e.target.value)}
             placeholder="逗号分隔，可空"
+            className="field-control"
           />
         </Field>
       </section>
@@ -277,7 +282,7 @@ export function BatchUploadForm({
 
       {items.length > 0 ? (
         <>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
+          <div className="admin-toolbar flex flex-wrap items-center gap-3 p-3 text-sm">
             <span className="text-default-500">
               共 {items.length} 张 · 就绪 {ready} · 完成 {done}
               {duplicate > 0 ? ` · 重复 ${duplicate}` : ""}
@@ -366,14 +371,19 @@ function PlainSelect({
       selectedKey={value}
       onSelectionChange={(key) => onChange(String(key))}
     >
-      <Select.Trigger>
+      <Select.Trigger className="field-trigger">
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover>
+      <Select.Popover className="motion-popover popover-surface">
         <ListBox>
           {options.map((o) => (
-            <ListBox.Item key={o.value} id={o.value} textValue={o.label}>
+            <ListBox.Item
+              key={o.value}
+              id={o.value}
+              textValue={o.label}
+              className="listbox-option"
+            >
               {o.label}
             </ListBox.Item>
           ))}
@@ -414,7 +424,7 @@ function DropArea({
         setDragOver(false);
         onPick([...e.dataTransfer.files]);
       }}
-      className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-content1 ${
+      className={`dropzone-feedback ui-focus flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-content1 ${
         hasItems ? "p-4" : "p-10"
       } transition ${
         dragOver ? "border-primary bg-primary/5" : "border-default-300 hover:border-default-400"
@@ -439,7 +449,7 @@ function BatchItemRow({
   onRemove: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-default-200 bg-content1 p-3 sm:flex-row">
+    <li className="motion-list-item flex flex-col gap-3 rounded-lg border border-default-200 bg-content1 p-3 sm:flex-row">
       <div className="flex-shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -472,12 +482,14 @@ function BatchItemRow({
             onChange={(e) => onUpdate({ name: e.target.value })}
             disabled={disabled}
             placeholder="名字"
+            className="field-control"
           />
           <Input
             value={item.tags}
             onChange={(e) => onUpdate({ tags: e.target.value })}
             disabled={disabled}
             placeholder="额外标签（逗号分隔，可空）"
+            className="field-control"
           />
         </div>
         {item.status === "uploading" ? (

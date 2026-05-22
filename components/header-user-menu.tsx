@@ -32,7 +32,7 @@ export function HeaderUserMenu({ user, logoutAction }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-default-200 px-2 py-1 text-sm transition hover:bg-default-100"
+        className="motion-interactive ui-focus flex items-center gap-2 rounded-full border border-default-200 px-2 py-1 text-sm transition hover:bg-default-100"
       >
         {user.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -50,7 +50,7 @@ export function HeaderUserMenu({ user, logoutAction }: Props) {
         <span className="hidden md:inline">{user.name}</span>
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-44 rounded-lg border border-default-200 bg-white p-1 shadow-lg dark:bg-zinc-900">
+        <div className="motion-popover popover-surface absolute right-0 z-50 mt-2 w-44">
           <div className="border-b border-default-100 px-3 py-2 text-xs text-default-500">
             {user.githubLogin ? `@${user.githubLogin}` : user.name}
             {user.role === "admin" ? (
@@ -64,7 +64,7 @@ export function HeaderUserMenu({ user, logoutAction }: Props) {
             <MenuLink href="/admin" label="后台管理" onClick={() => setOpen(false)} />
           ) : null}
           <form action={logoutAction}>
-            <Button type="submit" variant="ghost" className="w-full justify-start">
+            <Button type="submit" variant="ghost" className="motion-interactive w-full justify-start">
               登出
             </Button>
           </form>
@@ -79,7 +79,7 @@ function MenuLink({ href, label, onClick }: { href: string; label: string; onCli
     <Link
       href={href}
       onClick={onClick}
-      className="block rounded px-3 py-2 text-sm hover:bg-default-100"
+      className="motion-interactive ui-focus block rounded px-3 py-2 text-sm hover:bg-default-100"
     >
       {label}
     </Link>

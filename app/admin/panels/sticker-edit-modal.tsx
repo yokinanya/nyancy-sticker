@@ -59,12 +59,12 @@ export function StickerEditModal({
     <Modal>
       <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal.Container>
-          <Modal.Dialog className="motion-panel max-w-md border border-default-300 bg-content2 shadow-2xl">
+          <Modal.Dialog className="motion-panel modal-surface w-full max-w-md">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading>编辑贴纸</Modal.Heading>
             </Modal.Header>
-            <Modal.Body>
+            <Modal.Body className="px-4 sm:px-6">
               <StickerEditFields
                 state={{
                   sticker,
@@ -85,7 +85,7 @@ export function StickerEditModal({
               />
             </Modal.Body>
             <Modal.Footer>
-              <div className="flex w-full justify-end gap-2">
+              <div className="flex w-full flex-row justify-end gap-2">
                 <Button variant="ghost" onPress={onClose}>
                   取消
                 </Button>
@@ -136,7 +136,7 @@ function StickerEditFields({ state, actions }: StickerEditFieldsProps) {
         <Input
           value={state.name}
           onChange={(e) => actions.setName(e.target.value)}
-          className="bg-content1 px-3"
+          className="field-control modal-field bg-content1 px-3"
         />
       </Field>
       <Field label="角色">
@@ -160,7 +160,7 @@ function StickerEditFields({ state, actions }: StickerEditFieldsProps) {
         <Input
           value={state.tags}
           onChange={(e) => actions.setTags(e.target.value)}
-          className="bg-content1 px-3"
+          className="field-control modal-field bg-content1 px-3"
         />
       </Field>
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
@@ -198,14 +198,19 @@ function RoleSelect({
       selectedKey={value}
       onSelectionChange={(key) => onChange(String(key))}
     >
-      <Select.Trigger className="bg-content1">
+      <Select.Trigger className="field-trigger modal-field bg-content1">
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover>
+      <Select.Popover className="motion-popover popover-surface">
         <ListBox>
           {options.map((o) => (
-            <ListBox.Item key={o.value} id={o.value} textValue={o.label}>
+            <ListBox.Item
+              key={o.value}
+              id={o.value}
+              textValue={o.label}
+              className="listbox-option"
+            >
               {o.label}
             </ListBox.Item>
           ))}

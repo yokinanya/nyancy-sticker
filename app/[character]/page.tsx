@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { StickerGallery } from "@/components/sticker-gallery";
 import { findCharacter } from "@/lib/queries/characters";
-import { listApprovedStickersByCharacter } from "@/lib/queries/stickers";
+import { listCharacterGallery } from "@/lib/queries/stickers";
 
 export const revalidate = false;
 
@@ -20,10 +20,8 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function CharacterGalleryPage({ params }: PageProps) {
   const { character: rawId } = await params;
   const id = decodeURIComponent(rawId);
-  const character = await findCharacter(id);
+  const { character, stickers, categories } = await listCharacterGallery(id);
   if (!character) notFound();
-
-  const { stickers, categories } = await listApprovedStickersByCharacter(id);
 
   return (
     <div className="motion-page mx-auto flex w-full max-w-7xl flex-col px-4 py-6">

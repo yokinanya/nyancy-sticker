@@ -30,14 +30,19 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
         }}
         className="min-w-44"
       >
-        <Select.Trigger className={triggerClassName}>
+        <Select.Trigger className={`field-trigger ${triggerClassName ?? ""}`}>
           <Select.Value />
           <Select.Indicator />
         </Select.Trigger>
-        <Select.Popover>
+        <Select.Popover className="motion-popover popover-surface">
           <ListBox>
             {categories.map((category) => (
-              <ListBox.Item key={category.id} id={category.id} textValue={category.name}>
+              <ListBox.Item
+                key={category.id}
+                id={category.id}
+                textValue={category.name}
+                className="listbox-option"
+              >
                 {categoryLabel(category)}
               </ListBox.Item>
             ))}

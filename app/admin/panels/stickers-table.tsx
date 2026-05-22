@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { memo, useCallback, useMemo, useState, useTransition } from "react";
 import { Button, Checkbox, Chip, Input } from "@heroui/react";
 import type { Category } from "@/lib/types";
 import { CategorySelect } from "@/app/admin/category-select";
@@ -35,22 +35,39 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<readonly string[]>([]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
   const [editing, setEditing] = useState<AdminStickerRow | null>(null);
-  const [bulkCategory, setBulkCategory] = useState(categories[0]?.id ?? "");
+  const topLevels = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  );
+  const [bulkCharacter, setBulkCharacter] = useState(topLevels[0]?.id ?? "");
+  const bulkSubCategories = useMemo(
+    () => categories.filter((category) => category.parentId === bulkCharacter),
+    [categories, bulkCharacter],
+  );
+  const [bulkCategory, setBulkCategory] = useState(bulkSubCategories[0]?.id ?? "");
   const [bulkTags, setBulkTags] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [bulkExpanded, setBulkExpanded] = useState(false);
 
   const toggleAll = () => {
     const ids = items.map((i) => i.id);
     const allSelected = ids.every((id) => selected.includes(id));
     setSelected(allSelected ? [] : ids);
   };
-  const toggleOne = (id: string) => {
+  const toggleOne = useCallback((id: string) => {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  };
+    setBulkExpanded(true);
+  }, []);
+  const openEdit = useCallback((item: AdminStickerRow) => setEditing(item), []);
 
   const runBulk = (operation: string) => {
     if (selected.length === 0) return;
+    if (operation === "category" && !bulkCategory) {
+      setMessage("请选择子分类。");
+      return;
+    }
     if (operation === "delete" && !window.confirm(`确认删除 ${selected.length} 张贴纸？`)) return;
     const fd = new FormData();
     fd.set("operation", operation);
@@ -78,65 +95,117 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
   return (
     <div className="flex flex-col gap-3">
       {/* 批量工具栏 */}
-      <div className="rounded-lg border border-default-200 bg-content1 p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-default-500">已选 {selected.length} 张</span>
-          <CategorySelect
-            categories={categories}
-            value={bulkCategory}
-            onChange={setBulkCategory}
-          />
+      <div className="admin-toolbar p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="admin-section-title">批量操作</h2>
+            <p className="admin-section-description mt-1">已选 {selected.length} 张贴纸</p>
+          </div>
           <Button
-            size="sm"
             variant="ghost"
-            isPending={pending}
-            onPress={() => runBulk("category")}
+            className="md:hidden"
+            onPress={() => setBulkExpanded((value) => !value)}
           >
-            改分类
+            {bulkExpanded ? "收起操作" : "展开操作"}
           </Button>
-          <Input
-            value={bulkTags}
-            onChange={(e) => setBulkTags(e.target.value)}
-            placeholder="标签（逗号分隔）"
-            className="w-48"
-          />
-          <Button
-            size="sm"
-            variant="ghost"
-            isPending={pending}
-            onPress={() => runBulk("add-tags")}
-          >
-            加标签
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            isPending={pending}
-            onPress={() => runBulk("remove-tags")}
-          >
-            删标签
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            isPending={pending}
-            onPress={() => runBulk("delete")}
-          >
-            删除
-          </Button>
+        </div>
+        <div className="collapsible-panel md-open" data-open={bulkExpanded}>
+          <div className="collapsible-body">
+            <div className="mt-3 grid gap-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
+                <CategorySelect
+                  categories={topLevels}
+                  value={bulkCharacter}
+                  onChange={(value) => {
+                    setBulkCharacter(value);
+                    setBulkCategory(
+                      categories.find((category) => category.parentId === value)?.id ?? "",
+                    );
+                  }}
+                />
+                <CategorySelect
+                  categories={bulkSubCategories}
+                  value={bulkCategory}
+                  onChange={setBulkCategory}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isPending={pending}
+                  isDisabled={!bulkCategory}
+                  onPress={() => runBulk("category")}
+                >
+                  改分类
+                </Button>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                <Input
+                  value={bulkTags}
+                  onChange={(e) => setBulkTags(e.target.value)}
+                  placeholder="标签（逗号分隔）"
+                  className="field-control"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isPending={pending}
+                  onPress={() => runBulk("add-tags")}
+                >
+                  加标签
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isPending={pending}
+                  onPress={() => runBulk("remove-tags")}
+                >
+                  删标签
+                </Button>
+              </div>
+              <div className="flex justify-start">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isPending={pending}
+                  onPress={() => runBulk("delete")}
+                  className="border border-danger/30 text-danger hover:bg-danger/10"
+                >
+                  删除
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
         {message ? <p className="mt-2 text-xs text-default-500">{message}</p> : null}
       </div>
 
       {/* 表格 */}
-      <div className="overflow-x-auto rounded-lg border border-default-200 bg-content1 shadow-sm">
+      <div className="mobile-card-list">
+        {items.length === 0 ? (
+          <p className="admin-panel p-6 text-center text-sm text-default-400">
+            没有匹配的贴纸。调整筛选或翻页试试。
+          </p>
+        ) : (
+          items.map((item) => (
+            <StickerMobileCard
+              key={item.id}
+              item={item}
+              selected={selectedSet.has(item.id)}
+              onToggle={toggleOne}
+              onEdit={openEdit}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="desktop-table-wrap overflow-x-auto rounded-lg border border-default-200 bg-content1 shadow-sm">
         <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="border-b border-default-200 text-xs text-default-500">
             <tr>
               <th className="w-10 p-3">
                 <Checkbox
                   aria-label="全选"
-                  isSelected={items.length > 0 && items.every((i) => selected.includes(i.id))}
+                  isSelected={items.length > 0 && items.every((i) => selectedSet.has(i.id))}
                   onChange={toggleAll}
                 >
                   <Checkbox.Control>
@@ -169,7 +238,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                   <td className="p-3">
                     <Checkbox
                       aria-label={`选择 ${item.name}`}
-                      isSelected={selected.includes(item.id)}
+                      isSelected={selectedSet.has(item.id)}
                       onChange={() => toggleOne(item.id)}
                     >
                       <Checkbox.Control>
@@ -237,7 +306,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
       </div>
 
       {/* 分页 */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-default-500">
+      <div className="admin-toolbar flex flex-wrap items-center justify-between gap-2 p-3 text-sm text-default-500">
         <span>
           第 {page} / {pageCount} 页 · 共 {total} 条
         </span>
@@ -271,3 +340,87 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
     </div>
   );
 }
+
+const StickerMobileCard = memo(function StickerMobileCard({
+  item,
+  selected,
+  onToggle,
+  onEdit,
+}: {
+  item: AdminStickerRow;
+  selected: boolean;
+  onToggle: (id: string) => void;
+  onEdit: (item: AdminStickerRow) => void;
+}) {
+  return (
+    <article
+      className={`motion-list-item admin-panel p-3 ${
+        selected ? "border-primary/60 bg-primary/5" : ""
+      }`}
+    >
+      <div className="flex gap-3">
+        <div className="relative h-20 w-20 flex-none overflow-hidden rounded-lg bg-default-100">
+          <Image
+            src={item.src}
+            alt={item.name}
+            fill
+            sizes="80px"
+            className="object-contain p-1.5"
+            unoptimized={item.ext === "gif"}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-medium">{item.name}</h3>
+              <p className="mt-1 font-mono text-[11px] text-default-400">
+                {item.id} · {item.width}×{item.height} · {item.ext}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant={selected ? "primary" : "ghost"}
+              onPress={() => onToggle(item.id)}
+              className="motion-interactive flex-none transition-colors duration-150"
+              aria-pressed={selected}
+            >
+              {selected ? "已选择" : "选择"}
+            </Button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1">
+            <Chip size="sm" variant={STATUS_COLOR[item.status]}>
+              <Chip.Label>{STATUS_LABEL[item.status]}</Chip.Label>
+            </Chip>
+            <Chip size="sm" variant="soft">
+              <Chip.Label>{item.categoryId}</Chip.Label>
+            </Chip>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1">
+        {item.tags.length === 0 ? (
+          <span className="text-xs text-default-400">无标签</span>
+        ) : (
+          item.tags.slice(0, 6).map((tag) => (
+            <Chip key={tag} size="sm" variant="soft">
+              <Chip.Label>#{tag}</Chip.Label>
+            </Chip>
+          ))
+        )}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-default-100 pt-3">
+        <span className="text-xs text-default-500">
+          {item.submitterLogin ? `@${item.submitterLogin}` : (item.submitterName ?? "—")}
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          onPress={() => onEdit(item)}
+          className="motion-interactive"
+        >
+          编辑
+        </Button>
+      </div>
+    </article>
+  );
+});

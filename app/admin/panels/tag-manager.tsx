@@ -27,14 +27,15 @@ export function TagManager({ tags }: Props) {
   };
 
   if (tags.length === 0) {
-    return <p className="rounded-lg border border-default-200 bg-content1 p-6 text-center text-sm text-default-500">当前还没有任何标签。</p>;
+    return <p className="admin-panel p-6 text-center text-sm text-default-500">当前还没有任何标签。</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="rounded-lg border border-default-200 bg-content1">
-        <div className="border-b border-default-200 p-3 text-sm font-medium">
-          标签列表（{tags.length} 个）
+      <div className="admin-panel overflow-hidden">
+        <div className="border-b border-default-200 p-3">
+          <h2 className="admin-section-title">标签列表</h2>
+          <p className="admin-section-description mt-1">共 {tags.length} 个标签，可重命名或删除。</p>
         </div>
         <ul className="divide-y divide-default-100">
           {tags.map((t) => (
@@ -63,12 +64,12 @@ function TagRow({ item, pending, onRun }: { item: TagSummary; pending: boolean; 
     onRun(deleteTag, fd, `已删除：${item.tag}`);
   };
   return (
-    <li className="grid gap-2 p-3 md:grid-cols-[minmax(10rem,16rem)_1fr_auto_auto] md:items-center">
+    <li className="motion-list-item grid gap-2 p-3 md:grid-cols-[minmax(10rem,16rem)_1fr_auto_auto] md:items-center">
       <div className="flex items-center gap-2">
         <span className="text-sm">#{item.tag}</span>
         <Chip size="sm" variant="soft"><Chip.Label>{item.count}</Chip.Label></Chip>
       </div>
-      <Input value={to} onChange={(e) => setTo(e.target.value)} />
+      <Input value={to} onChange={(e) => setTo(e.target.value)} className="field-control" />
       <Button size="sm" variant="ghost" isPending={pending} onPress={onRename}>重命名</Button>
       <Button size="sm" variant="ghost" isPending={pending} onPress={onDelete}>删除</Button>
     </li>
