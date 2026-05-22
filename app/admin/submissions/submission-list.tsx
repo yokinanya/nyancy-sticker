@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input } from "@heroui/react";
+import { useFeedback } from "@/components/feedback";
 import type { Category } from "@/lib/types";
 import { CategorySelect } from "@/app/admin/category-select";
 import { approveSubmission, rejectSubmission } from "./actions";
@@ -47,6 +48,7 @@ function SubmissionCard({
   categories: readonly Category[];
 }) {
   const router = useRouter();
+  const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
   const [category, setCategory] = useState(submission.categoryId);
   const [name, setName] = useState(submission.name);
@@ -64,9 +66,12 @@ function SubmissionCard({
     startTransition(async () => {
       try {
         await approveSubmission(fd);
+        feedback.success(`已批准：${name}`);
         router.refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "批准失败。");
+        const message = e instanceof Error ? e.message : "批准失败。";
+        setError(message);
+        feedback.error(message);
       }
     });
   };
@@ -79,15 +84,18 @@ function SubmissionCard({
     startTransition(async () => {
       try {
         await rejectSubmission(fd);
+        feedback.info(`已拒绝：${submission.name}`);
         router.refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "拒绝失败。");
+        const message = e instanceof Error ? e.message : "拒绝失败。";
+        setError(message);
+        feedback.error(message);
       }
     });
   };
 
   return (
-    <article className="motion-list-item admin-panel overflow-hidden p-4">
+    <article className={`motion-list-item admin-panel overflow-hidden p-4 ${error ? "motion-shake" : ""}`}>
       <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
       <div className="flex-shrink-0">
         <Image
@@ -127,10 +135,10 @@ function SubmissionCard({
           <Input value={reason} onChange={(e) => setReason(e.target.value)} className="field-control" />
         </div>
         <div className="mt-2 flex flex-col gap-2 border-t border-default-100 pt-3 sm:flex-row">
-          <Button size="sm" variant="primary" isPending={pending} onPress={onApprove}>
+          <Button size="sm" variant="primary" isPending={pending} onPress={onApprove} className="motion-press">
             批准
           </Button>
-          <Button size="sm" variant="ghost" isPending={pending} onPress={onReject}>
+          <Button size="sm" variant="ghost" isPending={pending} onPress={onReject} className="motion-press">
             拒绝
           </Button>
         </div>

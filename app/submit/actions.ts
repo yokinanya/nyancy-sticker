@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
+import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { uploadStickerFile } from "@/lib/upload";
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024;
@@ -95,6 +96,7 @@ export async function createSubcategoryForSubmit(
     parentId,
     createdById: session.user.id,
   });
+  revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
   revalidatePath("/");
   revalidatePath("/admin");
   return { id, name };

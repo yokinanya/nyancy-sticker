@@ -13,6 +13,7 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "已拒绝" },
 ];
 const SORT_OPTIONS = [
+  { value: "grouped", label: "角色-分类-上传时间" },
   { value: "newest", label: "最新优先" },
   { value: "oldest", label: "最早优先" },
   { value: "name", label: "按名字" },
@@ -47,7 +48,7 @@ export function StickersFilters({ categories, current }: Props) {
   const [category, setCategory] = useState(current.category ?? "");
   const [tag, setTag] = useState(current.tag ?? "");
   const [q, setQ] = useState(current.q ?? "");
-  const [sort, setSort] = useState(current.sort ?? "newest");
+  const [sort, setSort] = useState(current.sort ?? "grouped");
   const [pageSize, setPageSize] = useState(String(current.pageSize ?? 20));
   const [expanded, setExpanded] = useState(false);
 
@@ -63,7 +64,7 @@ export function StickersFilters({ categories, current }: Props) {
     setOrDel(params, "category", category);
     setOrDel(params, "tag", tag);
     setOrDel(params, "q", q);
-    setOrDel(params, "sort", sort === "newest" ? "" : sort);
+    setOrDel(params, "sort", sort === "grouped" ? "" : sort);
     setOrDel(params, "pageSize", pageSize === "20" ? "" : pageSize);
     startTransition(() => router.push(`/admin?${params.toString()}`));
   };
@@ -74,7 +75,7 @@ export function StickersFilters({ categories, current }: Props) {
     setCategory("");
     setTag("");
     setQ("");
-    setSort("newest");
+    setSort("grouped");
     setPageSize("20");
     startTransition(() => router.push("/admin?tab=stickers"));
   };
@@ -88,7 +89,7 @@ export function StickersFilters({ categories, current }: Props) {
         </div>
         <Button
           variant="ghost"
-          className="md:hidden"
+          className="motion-press md:hidden"
           onPress={() => setExpanded((value) => !value)}
         >
           {expanded ? "收起筛选" : "展开筛选"}
@@ -164,10 +165,10 @@ export function StickersFilters({ categories, current }: Props) {
                     options={PAGE_SIZE_OPTIONS}
                   />
                 </Field>
-                <Button variant="ghost" onPress={reset} isPending={pending}>
+                <Button variant="ghost" onPress={reset} isPending={pending} className="motion-press">
                   重置
                 </Button>
-                <Button variant="primary" onPress={apply} isPending={pending}>
+                <Button variant="primary" onPress={apply} isPending={pending} className="motion-press">
                   应用筛选
                 </Button>
               </div>

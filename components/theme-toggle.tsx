@@ -21,7 +21,7 @@ export function ThemeToggle() {
       variant="ghost"
       aria-label={isDark ? "切换到浅色模式" : "切换到深色模式"}
       onPress={() => setTheme(isDark ? "light" : "dark")}
-      className="motion-interactive"
+      className="motion-press"
     >
       {/* 简单的太阳/月亮 SVG，避免引入图标库 */}
       {isDark ? (

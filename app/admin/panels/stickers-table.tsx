@@ -7,6 +7,7 @@ import { Button, Checkbox, Chip, Input } from "@heroui/react";
 import type { Category } from "@/lib/types";
 import { CategorySelect } from "@/app/admin/category-select";
 import { bulkUpdateStickers } from "@/app/admin/actions";
+import { useFeedback } from "@/components/feedback";
 import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
 import { StickerEditModal } from "./sticker-edit-modal";
 
@@ -32,6 +33,7 @@ interface Props {
 
 export function StickersTable({ items, categories, page, pageCount, total }: Props) {
   const router = useRouter();
+  const feedback = useFeedback();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -48,7 +50,6 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
   );
   const [bulkCategory, setBulkCategory] = useState(bulkSubCategories[0]?.id ?? "");
   const [bulkTags, setBulkTags] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
   const [bulkExpanded, setBulkExpanded] = useState(false);
 
   const toggleAll = () => {
@@ -65,7 +66,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
   const runBulk = (operation: string) => {
     if (selected.length === 0) return;
     if (operation === "category" && !bulkCategory) {
-      setMessage("请选择子分类。");
+      feedback.error("请选择子分类。");
       return;
     }
     if (operation === "delete" && !window.confirm(`确认删除 ${selected.length} 张贴纸？`)) return;
@@ -77,11 +78,11 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
     startTransition(async () => {
       try {
         await bulkUpdateStickers(fd);
-        setMessage(`已批量执行：${operation}`);
+        feedback.success(`已批量执行：${operation}`);
         setSelected([]);
         router.refresh();
       } catch (e) {
-        setMessage(e instanceof Error ? e.message : "操作失败。");
+        feedback.error(e instanceof Error ? e.message : "操作失败。");
       }
     });
   };
@@ -103,7 +104,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
           </div>
           <Button
             variant="ghost"
-            className="md:hidden"
+            className="motion-press md:hidden"
             onPress={() => setBulkExpanded((value) => !value)}
           >
             {bulkExpanded ? "收起操作" : "展开操作"}
@@ -134,6 +135,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                   isPending={pending}
                   isDisabled={!bulkCategory}
                   onPress={() => runBulk("category")}
+                  className="motion-press"
                 >
                   改分类
                 </Button>
@@ -150,6 +152,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                   variant="ghost"
                   isPending={pending}
                   onPress={() => runBulk("add-tags")}
+                  className="motion-press"
                 >
                   加标签
                 </Button>
@@ -158,6 +161,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                   variant="ghost"
                   isPending={pending}
                   onPress={() => runBulk("remove-tags")}
+                  className="motion-press"
                 >
                   删标签
                 </Button>
@@ -168,7 +172,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                   variant="ghost"
                   isPending={pending}
                   onPress={() => runBulk("delete")}
-                  className="border border-danger/30 text-danger hover:bg-danger/10"
+                  className="motion-press border border-danger/30 text-danger hover:bg-danger/10"
                 >
                   删除
                 </Button>
@@ -176,7 +180,6 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
             </div>
           </div>
         </div>
-        {message ? <p className="mt-2 text-xs text-default-500">{message}</p> : null}
       </div>
 
       {/* 表格 */}
@@ -233,7 +236,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className="motion-list-item motion-interactive border-b border-default-100 hover:bg-default-50 last:border-0 dark:hover:bg-default-100/5"
+                  className={`motion-list-item border-b border-default-100 hover:bg-default-50 last:border-0 dark:hover:bg-default-100/5 ${selectedSet.has(item.id) ? "motion-selection bg-primary/5" : ""}`}
                 >
                   <td className="p-3">
                     <Checkbox
@@ -294,7 +297,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                     </div>
                   </td>
                   <td className="p-3">
-                    <Button size="sm" variant="ghost" onPress={() => setEditing(item)}>
+                    <Button size="sm" variant="ghost" onPress={() => setEditing(item)} className="motion-press">
                       编辑
                     </Button>
                   </td>
@@ -311,7 +314,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
           第 {page} / {pageCount} 页 · 共 {total} 条
         </span>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" isDisabled={page <= 1} onPress={() => goPage(page - 1)}>
+          <Button size="sm" variant="ghost" isDisabled={page <= 1} onPress={() => goPage(page - 1)} className="motion-press">
             上一页
           </Button>
           <Button
@@ -319,6 +322,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
             variant="ghost"
             isDisabled={page >= pageCount}
             onPress={() => goPage(page + 1)}
+            className="motion-press"
           >
             下一页
           </Button>
@@ -355,7 +359,7 @@ const StickerMobileCard = memo(function StickerMobileCard({
   return (
     <article
       className={`motion-list-item admin-panel p-3 ${
-        selected ? "border-primary/60 bg-primary/5" : ""
+        selected ? "motion-selection border-primary/60 bg-primary/5" : ""
       }`}
     >
       <div className="flex gap-3">
@@ -381,7 +385,7 @@ const StickerMobileCard = memo(function StickerMobileCard({
               size="sm"
               variant={selected ? "primary" : "ghost"}
               onPress={() => onToggle(item.id)}
-              className="motion-interactive flex-none transition-colors duration-150"
+              className="motion-press flex-none transition-colors duration-150"
               aria-pressed={selected}
             >
               {selected ? "已选择" : "选择"}
@@ -416,7 +420,7 @@ const StickerMobileCard = memo(function StickerMobileCard({
           size="sm"
           variant="ghost"
           onPress={() => onEdit(item)}
-          className="motion-interactive"
+          className="motion-press"
         >
           编辑
         </Button>

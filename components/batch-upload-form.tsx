@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Input, ListBox, ProgressBar, Select } from "@heroui/react";
+import { useFeedback } from "@/components/feedback";
 import type { Category } from "@/lib/types";
 import {
   baseName,
@@ -54,6 +55,7 @@ export function BatchUploadForm({
   allowCreateSubcategory = true,
 }: Props) {
   const router = useRouter();
+  const feedback = useFeedback();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [extraCategories, setExtraCategories] = useState<Category[]>([]);
@@ -76,7 +78,6 @@ export function BatchUploadForm({
   const [createOpen, setCreateOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [globalMessage, setGlobalMessage] = useState<string | null>(null);
 
   const totalProgress = useMemo(() => {
     if (items.length === 0) return 0;
@@ -103,7 +104,7 @@ export function BatchUploadForm({
       errorMsg: file.size > MAX_SIZE_BYTES ? `>8MB 已忽略` : undefined,
     }));
     setItems((prev) => [...prev, ...newItems]);
-    setGlobalMessage(null);
+    feedback.info(`已添加 ${newItems.length} 张图片`);
     // 预处理：算 hash + 尺寸（并行）
     newItems
       .filter((i) => i.status === "processing")
@@ -143,7 +144,7 @@ export function BatchUploadForm({
         | { ok: true; existing: { hash: string }[] }
         | { ok: false; error: string };
       if (!data.ok) {
-        setGlobalMessage(data.error);
+        feedback.error(data.error);
         return;
       }
       const exists = new Set(data.existing.map((e) => e.hash));
@@ -155,7 +156,7 @@ export function BatchUploadForm({
         ),
       );
     } catch (e) {
-      setGlobalMessage(e instanceof Error ? e.message : "重复检测失败。");
+      feedback.error(e instanceof Error ? e.message : "重复检测失败。");
     }
   };
 
@@ -172,21 +173,21 @@ export function BatchUploadForm({
   };
 
   const onStartUpload = async () => {
-    setGlobalMessage(null);
     if (!character) {
-      setGlobalMessage("请先选择角色。");
+      feedback.error("请先选择角色。");
       return;
     }
     if (!subCategory) {
-      setGlobalMessage("请选择子分类（或新建一个）。");
+      feedback.error("请选择子分类（或新建一个）。");
       return;
     }
     const list = items.filter((i) => i.status === "ready" || i.status === "error");
     if (list.length === 0) {
-      setGlobalMessage("没有可上传的图片。");
+      feedback.error("没有可上传的图片。");
       return;
     }
     setUploading(true);
+    const loadingId = feedback.loading(`正在上传 ${list.length} 张图片`);
     for (const item of list) {
       updateItem(item.clientId, { status: "uploading", progress: 0, errorMsg: undefined });
       try {
@@ -202,7 +203,8 @@ export function BatchUploadForm({
       }
     }
     setUploading(false);
-    setGlobalMessage("处理完成，可关闭页面或继续上传。");
+    feedback.dismiss(loadingId);
+    feedback.success("处理完成，可关闭页面或继续上传。");
     router.refresh();
   };
 
@@ -295,8 +297,8 @@ export function BatchUploadForm({
                 onPress={() => {
                   items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
                   setItems([]);
-                  setGlobalMessage(null);
                 }}
+                className="motion-press"
               >
                 全部清空
               </Button>
@@ -305,6 +307,7 @@ export function BatchUploadForm({
                 isPending={uploading}
                 isDisabled={uploading || (ready === 0 && errored === 0)}
                 onPress={onStartUpload}
+                className="motion-press"
               >
                 {uploading ? "上传中" : `${submitLabel} (${ready + errored})`}
               </Button>
@@ -327,10 +330,6 @@ export function BatchUploadForm({
             ))}
           </ul>
         </>
-      ) : null}
-
-      {globalMessage ? (
-        <p className="text-sm text-default-500">{globalMessage}</p>
       ) : null}
 
       {createOpen && character ? (

@@ -1,7 +1,10 @@
+import { unstable_cache } from "next/cache";
 import { asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories } from "@/drizzle/schema";
 import type { Category } from "@/lib/types";
+
+export const CATEGORY_TREE_CACHE_TAG = "category-tree";
 
 export async function listAllCategories(): Promise<Category[]> {
   const rows = await db
@@ -18,6 +21,12 @@ export async function listAllCategories(): Promise<Category[]> {
     ...(parentId ? { parentId } : {}),
   }));
 }
+
+export const listCachedCategories = unstable_cache(
+  listAllCategories,
+  ["category-tree"],
+  { tags: [CATEGORY_TREE_CACHE_TAG] },
+);
 
 export interface CategoryWithCount {
   id: string;

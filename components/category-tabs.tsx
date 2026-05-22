@@ -1,38 +1,45 @@
 "use client";
 
 import { Tabs } from "@heroui/react";
-import { useEffect, useMemo } from "react";
-import { useFilterStore } from "@/lib/store";
+import { useMemo } from "react";
 import type { Category } from "@/lib/types";
-import { childCategoryIds, topLevelCategories } from "@/lib/categories";
+import {
+  childCategoryIds,
+  defaultCategoryId,
+  topLevelCategories,
+} from "@/lib/categories";
 
 interface Props {
   categories: Category[];
   counts: Record<string, number>;
+  selectedCategory: string | null;
+  onCategoryChange: (category: string | null) => void;
   hideTopLevel?: boolean;
 }
 
 const scrollableTabListClass =
   "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 const tabClass =
-  "motion-interactive w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
+  "motion-press ui-selected-tab w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
 
-export function CategoryTabs({ categories, counts, hideTopLevel = false }: Props) {
-  const category = useFilterStore((s) => s.category);
-  const setCategory = useFilterStore((s) => s.setCategory);
-  const defaultCategory = useMemo(() => findDefaultCategory(categories), [categories]);
-  const selectedCategory = isValidCategory(categories, category) ? category : defaultCategory;
-  const activeParent = findActiveParent(categories, selectedCategory);
+export function CategoryTabs({
+  categories,
+  counts,
+  selectedCategory,
+  onCategoryChange,
+  hideTopLevel = false,
+}: Props) {
+  const defaultCategory = useMemo(() => defaultCategoryId(categories), [categories]);
+  const effectiveCategory = isValidCategory(categories, selectedCategory)
+    ? selectedCategory
+    : defaultCategory;
+  const activeParent = findActiveParent(categories, effectiveCategory);
   const childIds = activeParent ? childCategoryIds(categories, activeParent.id) : [];
   const childCategories = categories.filter((item) => childIds.includes(item.id));
   const selectTopCategory = (id: string) => {
     const firstChildId = childCategoryIds(categories, id)[0];
-    setCategory(firstChildId ?? id);
+    onCategoryChange(firstChildId ?? id);
   };
-
-  useEffect(() => {
-    if (selectedCategory && selectedCategory !== category) setCategory(selectedCategory);
-  }, [category, selectedCategory, setCategory]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -57,8 +64,8 @@ export function CategoryTabs({ categories, counts, hideTopLevel = false }: Props
       {childCategories.length > 0 ? (
         <Tabs
           aria-label="分类"
-          selectedKey={selectedCategory ?? undefined}
-          onSelectionChange={(k) => setCategory(String(k))}
+          selectedKey={effectiveCategory ?? undefined}
+          onSelectionChange={(k) => onCategoryChange(String(k))}
         >
           <Tabs.List
             aria-label="分类"
@@ -82,12 +89,6 @@ function findActiveParent(categories: readonly Category[], selected: string | nu
   if (!current) return null;
   if (!current.parentId) return current;
   return categories.find((category) => category.id === current.parentId) ?? null;
-}
-
-function findDefaultCategory(categories: readonly Category[]) {
-  const firstParent = topLevelCategories(categories)[0];
-  if (!firstParent) return null;
-  return childCategoryIds(categories, firstParent.id)[0] ?? firstParent.id;
 }
 
 function isValidCategory(categories: readonly Category[], category: string | null) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
-import { listAllCategories } from "@/lib/queries/categories";
+import { listCachedCategories } from "@/lib/queries/categories";
 import { ThemeToggle } from "./theme-toggle";
 import { HeaderUserMenu } from "./header-user-menu";
 import { SiteTitle } from "./site-title";
@@ -8,7 +8,7 @@ import { SiteTitle } from "./site-title";
 export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
-  const categories = await listAllCategories();
+  const categories = await listCachedCategories();
   const characters = categories
     .filter((c) => !c.parentId)
     .map((c) => ({ id: c.id, name: c.name }));

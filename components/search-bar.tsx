@@ -2,26 +2,19 @@
 
 import { Input } from "@heroui/react";
 import { useEffect, useState } from "react";
-import { useFilterStore } from "@/lib/store";
 
-export function SearchBar() {
-  const setQuery = useFilterStore((s) => s.setQuery);
-  const storeQuery = useFilterStore((s) => s.query);
-  const [local, setLocal] = useState(storeQuery);
+interface Props {
+  query: string;
+  onQueryChange: (query: string) => void;
+}
+
+export function SearchBar({ query, onQueryChange }: Props) {
+  const [local, setLocal] = useState(query);
 
   useEffect(() => {
-    const id = setTimeout(() => setQuery(local), 200);
+    const id = setTimeout(() => onQueryChange(local), 200);
     return () => clearTimeout(id);
-  }, [local, setQuery]);
-
-  // 同步外部 reset
-  useEffect(() => {
-    if (storeQuery !== local && storeQuery === "") {
-      const id = window.setTimeout(() => setLocal(""), 0);
-      return () => window.clearTimeout(id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeQuery]);
+  }, [local, onQueryChange]);
 
   return (
     <div className="relative w-full">
@@ -35,7 +28,7 @@ export function SearchBar() {
         aria-label="搜索表情包"
         type="search"
         placeholder="搜索名称 / 标签 / 分类"
-        className="field-control w-full pl-9"
+        className="field-control w-full !pl-10"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
       />

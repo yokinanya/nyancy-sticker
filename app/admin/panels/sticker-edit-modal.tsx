@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { Button, Input, ListBox, Modal, Select } from "@heroui/react";
 import { updateSticker } from "@/app/admin/actions";
+import { useFeedback } from "@/components/feedback";
 import type { AdminStickerRow } from "@/lib/queries/admin-stickers";
 import type { Category } from "@/lib/types";
 
@@ -21,6 +22,7 @@ export function StickerEditModal({
   onSaved,
 }: StickerEditModalProps) {
   const [pending, startTransition] = useTransition();
+  const feedback = useFeedback();
   const initialCat = categories.find((c) => c.id === sticker.categoryId);
   const initialCharacter = initialCat?.parentId ?? sticker.categoryId;
   const initialSub = initialCat?.parentId ? sticker.categoryId : "";
@@ -48,9 +50,12 @@ export function StickerEditModal({
     startTransition(async () => {
       try {
         await updateSticker(fd);
+        feedback.success(`已保存：${name}`);
         onSaved();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "保存失败。");
+        const message = e instanceof Error ? e.message : "保存失败。";
+        setError(message);
+        feedback.error(message);
       }
     });
   };
@@ -59,8 +64,12 @@ export function StickerEditModal({
     <Modal>
       <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal.Container>
-          <Modal.Dialog className="motion-panel modal-surface w-full max-w-md">
-            <Modal.CloseTrigger />
+          <Modal.Dialog className={`motion-panel modal-surface w-full max-w-md ${error ? "motion-shake" : ""}`}>
+            <Modal.CloseTrigger className="motion-press absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
+              <span aria-hidden="true">
+                ×
+              </span>
+            </Modal.CloseTrigger>
             <Modal.Header>
               <Modal.Heading>编辑贴纸</Modal.Heading>
             </Modal.Header>
@@ -86,10 +95,10 @@ export function StickerEditModal({
             </Modal.Body>
             <Modal.Footer>
               <div className="flex w-full flex-row justify-end gap-2">
-                <Button variant="ghost" onPress={onClose}>
+                <Button variant="ghost" onPress={onClose} className="motion-press">
                   取消
                 </Button>
-                <Button variant="primary" isPending={pending} onPress={save}>
+                <Button variant="primary" isPending={pending} onPress={save} className="motion-press">
                   保存
                 </Button>
               </div>

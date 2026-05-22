@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { Button, Chip, ListBox, Select } from "@heroui/react";
 import type { AdminUserRow, Role } from "@/lib/queries/users";
 import { changeUserRole } from "@/app/admin/users-actions";
+import { useFeedback } from "@/components/feedback";
 
 const ROLE_LABEL: Record<Role, string> = {
   user: "用户",
@@ -40,12 +41,9 @@ export function UsersTable({
   seedAdmins,
 }: Props) {
   const router = useRouter();
+  const feedback = useFeedback();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{
-    text: string;
-    tone: "info" | "success" | "danger";
-  } | null>(null);
 
   const goPage = (next: number) => {
     const params = new URLSearchParams(searchParams);
@@ -55,20 +53,16 @@ export function UsersTable({
   };
 
   const submitRole = (userId: string, role: Role) => {
-    setMessage(null);
     const fd = new FormData();
     fd.set("userId", userId);
     fd.set("role", role);
     startTransition(async () => {
       try {
         await changeUserRole(fd);
-        setMessage({ text: `已更新角色为「${ROLE_LABEL[role]}」`, tone: "success" });
+        feedback.success(`已更新角色为「${ROLE_LABEL[role]}」`);
         router.refresh();
       } catch (e) {
-        setMessage({
-          text: e instanceof Error ? e.message : "操作失败。",
-          tone: "danger",
-        });
+        feedback.error(e instanceof Error ? e.message : "操作失败。");
       }
     });
   };
@@ -118,7 +112,7 @@ export function UsersTable({
                 return (
                   <tr
                     key={u.id}
-                    className="motion-list-item motion-interactive border-b border-default-100 last:border-0 hover:bg-default-50 dark:hover:bg-default-100/5"
+                    className="motion-list-item border-b border-default-100 last:border-0 hover:bg-default-50 dark:hover:bg-default-100/5"
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
@@ -175,20 +169,6 @@ export function UsersTable({
         </table>
       </div>
 
-      {message ? (
-        <p
-          className={`text-sm ${
-            message.tone === "success"
-              ? "text-success"
-              : message.tone === "danger"
-                ? "text-danger"
-                : "text-default-500"
-          }`}
-        >
-          {message.text}
-        </p>
-      ) : null}
-
       <div className="admin-toolbar flex flex-wrap items-center justify-between gap-2 p-3 text-sm text-default-500">
         <span>
           第 {page} / {pageCount} 页 · 共 {total} 位用户
@@ -199,6 +179,7 @@ export function UsersTable({
             variant="ghost"
             isDisabled={page <= 1}
             onPress={() => goPage(page - 1)}
+            className="motion-press"
           >
             上一页
           </Button>
@@ -207,6 +188,7 @@ export function UsersTable({
             variant="ghost"
             isDisabled={page >= pageCount}
             onPress={() => goPage(page + 1)}
+            className="motion-press"
           >
             下一页
           </Button>

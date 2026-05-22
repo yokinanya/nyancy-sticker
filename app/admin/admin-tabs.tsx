@@ -15,7 +15,7 @@ const USERS_TAB = { key: "users", title: "用户" } as const;
 const scrollableTabListClass =
   "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 const tabClass =
-  "motion-interactive w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
+  "motion-press ui-selected-tab w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
 
 export type AdminTab =
   | (typeof BASE_TABS)[number]["key"]

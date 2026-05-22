@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { categories, stickers, users } from "@/drizzle/schema";
 
@@ -29,7 +30,7 @@ export interface ListOptions {
   q?: string;
   page: number;
   pageSize: number;
-  sort?: "newest" | "oldest" | "name";
+  sort?: "grouped" | "newest" | "oldest" | "name";
 }
 
 export interface ListResult {
@@ -64,12 +65,7 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const offset = Math.max(0, (opts.page - 1) * opts.pageSize);
 
-  const orderBy =
-    opts.sort === "oldest"
-      ? [asc(stickers.submittedAt)]
-      : opts.sort === "name"
-        ? [asc(stickers.name)]
-        : [desc(stickers.submittedAt)];
+  const orderBy = buildOrderBy(opts.sort);
 
   const [items, totalRows] = await Promise.all([
     db
@@ -90,6 +86,8 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
         submitterLogin: users.githubLogin,
       })
       .from(stickers)
+      .leftJoin(categories, eq(stickers.categoryId, categories.id))
+      .leftJoin(parentCategories, eq(categories.parentId, parentCategories.id))
       .leftJoin(users, eq(stickers.submittedById, users.id))
       .where(where)
       .orderBy(...orderBy)
@@ -101,6 +99,19 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
   const total = Number(totalRows[0]?.c ?? 0);
   const pageCount = Math.max(1, Math.ceil(total / opts.pageSize));
   return { items, total, page: opts.page, pageSize: opts.pageSize, pageCount };
+}
+
+const parentCategories = alias(categories, "parent_category");
+
+function buildOrderBy(sort: ListOptions["sort"]) {
+  if (sort === "oldest") return [asc(stickers.submittedAt)];
+  if (sort === "name") return [asc(stickers.name)];
+  if (sort === "newest") return [desc(stickers.submittedAt)];
+  return [
+    asc(sql`COALESCE(${parentCategories.id}, ${categories.id})`),
+    asc(stickers.categoryId),
+    desc(stickers.submittedAt),
+  ];
 }
 
 export async function countByStatus(): Promise<Record<StickerStatus, number>> {

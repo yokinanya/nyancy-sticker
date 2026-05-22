@@ -33,7 +33,7 @@ export async function StickersPanel({ searchParams }: Props) {
       categoryId: category,
       tag,
       q,
-      sort: sort === "oldest" || sort === "name" ? sort : "newest",
+      sort: sort === "newest" || sort === "oldest" || sort === "name" ? sort : "grouped",
       page,
       pageSize,
     }),

@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button, Chip, Input } from "@heroui/react";
 import { deleteTag, renameTag } from "@/app/admin/actions";
+import { useFeedback } from "@/components/feedback";
 import type { TagSummary } from "@/lib/queries/tags";
 
 interface Props {
@@ -11,17 +12,17 @@ interface Props {
 
 export function TagManager({ tags }: Props) {
   const router = useRouter();
+  const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
 
   const run = (action: (fd: FormData) => Promise<void>, fd: FormData, done: string) => {
     startTransition(async () => {
       try {
         await action(fd);
-        setMessage(done);
+        feedback.success(done);
         router.refresh();
       } catch (e) {
-        setMessage(e instanceof Error ? e.message : "操作失败。");
+        feedback.error(e instanceof Error ? e.message : "操作失败。");
       }
     });
   };
@@ -43,7 +44,6 @@ export function TagManager({ tags }: Props) {
           ))}
         </ul>
       </div>
-      {message ? <p className="text-xs text-default-500">{message}</p> : null}
     </div>
   );
 }
@@ -70,8 +70,8 @@ function TagRow({ item, pending, onRun }: { item: TagSummary; pending: boolean; 
         <Chip size="sm" variant="soft"><Chip.Label>{item.count}</Chip.Label></Chip>
       </div>
       <Input value={to} onChange={(e) => setTo(e.target.value)} className="field-control" />
-      <Button size="sm" variant="ghost" isPending={pending} onPress={onRename}>重命名</Button>
-      <Button size="sm" variant="ghost" isPending={pending} onPress={onDelete}>删除</Button>
+      <Button size="sm" variant="ghost" isPending={pending} onPress={onRename} className="motion-press">重命名</Button>
+      <Button size="sm" variant="ghost" isPending={pending} onPress={onDelete} className="motion-press">删除</Button>
     </li>
   );
 }

@@ -9,21 +9,81 @@ import { StickerPreviewModal } from "./sticker-preview-modal";
 import { useFilterStore } from "@/lib/store";
 import { createFuse, filterStickers } from "@/lib/search";
 import {
+  countTagsByCategoryTree,
   countStickersByCategoryTree,
   createCategoryDescendantMap,
+  defaultCategoryId,
+  type CategoryTagCount,
 } from "@/lib/categories";
-import type { Manifest, Sticker } from "@/lib/types";
+import type { Category, Manifest, Sticker } from "@/lib/types";
 
 interface Props {
   manifest: Manifest;
+  characterId?: string;
   hideTopLevel?: boolean;
 }
 
-export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
+export function StickerGallery({
+  manifest,
+  characterId = "all",
+  hideTopLevel = false,
+}: Props) {
   const { categories, stickers } = manifest;
-  const query = useFilterStore((s) => s.query);
-  const category = useFilterStore((s) => s.category);
-  const tags = useFilterStore((s) => s.tags);
+  const filters = useScopedFilters(characterId, categories);
+  const fuse = useFuseIndex(stickers);
+  const derived = useMemo(
+    () => createGalleryDerivedData(categories, stickers),
+    [categories, stickers],
+  );
+  const filtered = useFilteredStickers(stickers, fuse, filters, derived.descendantMap);
+  const topTags = useMemo(
+    () => getTopTags(derived.tagsByCategory, filters.category),
+    [derived.tagsByCategory, filters.category],
+  );
+  const [active, setActive] = useState<Sticker | null>(null);
+  const [open, setOpen] = useState(false);
+  const onOpen = useCallback((s: Sticker) => {
+    setActive(s);
+    setOpen(true);
+  }, []);
+
+  useGlobalSearchShortcut();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <GalleryControls
+        characterId={characterId}
+        categories={categories}
+        counts={derived.categoryCounts}
+        filters={filters}
+        hideTopLevel={hideTopLevel}
+        topTags={topTags}
+      />
+      {filtered.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <StickerGrid stickers={filtered} onOpen={onOpen} />
+      )}
+      <StickerPreviewModal sticker={active} isOpen={open} onOpenChange={setOpen} />
+    </div>
+  );
+}
+
+function useScopedFilters(characterId: string, categories: readonly Category[]) {
+  const scopeId = useFilterStore((s) => s.scopeId);
+  const storeQuery = useFilterStore((s) => s.query);
+  const storeCategory = useFilterStore((s) => s.category);
+  const storeTags = useFilterStore((s) => s.tags);
+  const setGalleryScope = useFilterStore((s) => s.setGalleryScope);
+  const setQuery = useFilterStore((s) => s.setQuery);
+  const setCategory = useFilterStore((s) => s.setCategory);
+  const toggleTag = useFilterStore((s) => s.toggleTag);
+  const clearTags = useFilterStore((s) => s.clearTags);
+  const defaultCategory = useMemo(() => defaultCategoryId(categories), [categories]);
+  const currentScope = scopeId === characterId;
+  const query = currentScope ? storeQuery : "";
+  const category = currentScope ? storeCategory : defaultCategory;
+  const tags = currentScope ? storeTags : [];
   const deferredQuery = useDeferredValue(query);
   const deferredCategory = useDeferredValue(category);
   const deferredTags = useDeferredValue(tags);
@@ -32,8 +92,30 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
     deferredCategory !== category ||
     deferredTags !== tags;
 
-  // Fuse 索引在 idle 时构建
+  useEffect(() => {
+    setGalleryScope(characterId, defaultCategory);
+  }, [characterId, defaultCategory, setGalleryScope]);
+
+  return {
+    category,
+    clearTags,
+    deferredCategory,
+    deferredQuery,
+    deferredTags,
+    isFiltering,
+    query,
+    setCategory,
+    setQuery,
+    tags,
+    toggleTag,
+  };
+}
+
+type GalleryFilters = ReturnType<typeof useScopedFilters>;
+
+function useFuseIndex(stickers: readonly Sticker[]) {
   const [fuse, setFuse] = useState<ReturnType<typeof createFuse> | null>(null);
+
   useEffect(() => {
     const idle =
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
@@ -41,54 +123,32 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
     idle(() => setFuse(createFuse(stickers)));
   }, [stickers]);
 
-  const descendantMap = useMemo(
-    () => createCategoryDescendantMap(categories),
-    [categories],
-  );
+  return fuse;
+}
 
+function useFilteredStickers(
+  stickers: readonly Sticker[],
+  fuse: ReturnType<typeof createFuse> | null,
+  filters: GalleryFilters,
+  descendantMap: ReadonlyMap<string, ReadonlySet<string>>,
+) {
   const selectedCategoryIds = useMemo(() => {
-    if (!deferredCategory) return null;
-    return descendantMap.get(deferredCategory) ?? new Set([deferredCategory]);
-  }, [deferredCategory, descendantMap]);
+    if (!filters.deferredCategory) return null;
+    return descendantMap.get(filters.deferredCategory) ?? new Set([filters.deferredCategory]);
+  }, [filters.deferredCategory, descendantMap]);
 
-  const filtered = useMemo(
+  return useMemo(
     () =>
       filterStickers(stickers, fuse, {
-        query: deferredQuery,
+        query: filters.deferredQuery,
         categoryIds: selectedCategoryIds,
-        tags: deferredTags,
+        tags: filters.deferredTags,
       }),
-    [stickers, fuse, deferredQuery, selectedCategoryIds, deferredTags],
+    [stickers, fuse, filters.deferredQuery, selectedCategoryIds, filters.deferredTags],
   );
+}
 
-  const categoryCounts = useMemo(() => {
-    return countStickersByCategoryTree(categories, stickers);
-  }, [categories, stickers]);
-
-  const topTags = useMemo(() => {
-    const counts = new Map<string, number>();
-    const tagCategoryIds = category
-      ? descendantMap.get(category) ?? new Set([category])
-      : null;
-    const pool = tagCategoryIds
-      ? stickers.filter((s) => tagCategoryIds.has(s.category))
-      : stickers;
-    for (const s of pool) {
-      for (const t of s.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
-    }
-    return [...counts.entries()]
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [stickers, category, descendantMap]);
-
-  const [active, setActive] = useState<Sticker | null>(null);
-  const [open, setOpen] = useState(false);
-  const onOpen = useCallback((s: Sticker) => {
-    setActive(s);
-    setOpen(true);
-  }, []);
-
-  // 全局快捷键：/ 聚焦搜索
+function useGlobalSearchShortcut() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (
@@ -106,29 +166,64 @@ export function StickerGallery({ manifest, hideTopLevel = false }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+}
 
+function GalleryControls({
+  characterId,
+  categories,
+  counts,
+  filters,
+  hideTopLevel,
+  topTags,
+}: {
+  characterId: string;
+  categories: Category[];
+  counts: Record<string, number>;
+  filters: GalleryFilters;
+  hideTopLevel: boolean;
+  topTags: CategoryTagCount[];
+}) {
   return (
-    <div className="flex flex-col gap-4">
-      <SearchBar />
+    <>
+      <SearchBar
+        key={characterId}
+        query={filters.query}
+        onQueryChange={filters.setQuery}
+      />
       <CategoryTabs
         categories={categories}
-        counts={categoryCounts}
+        counts={counts}
+        selectedCategory={filters.category}
+        onCategoryChange={filters.setCategory}
         hideTopLevel={hideTopLevel}
       />
-      <TagFilter tags={topTags} />
-      <div className="motion-panel rounded-md border border-black/5 bg-white/70 px-3 py-2 text-xs text-zinc-500 shadow-sm dark:border-white/10 dark:bg-zinc-950/60">
-        共 {filtered.length} 张 {query && `· 搜索「${query}」`}
-        {tags.length > 0 && ` · 标签 ${tags.map((t) => `#${t}`).join(" ")}`}
-        {isFiltering && <span className="ml-2 text-accent">更新中...</span>}
-      </div>
-      {filtered.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <StickerGrid stickers={filtered} onOpen={onOpen} />
-      )}
-      <StickerPreviewModal sticker={active} isOpen={open} onOpenChange={setOpen} />
-    </div>
+      <TagFilter
+        tags={topTags}
+        selected={filters.tags}
+        onToggle={filters.toggleTag}
+        onClear={filters.clearTags}
+      />
+    </>
   );
+}
+
+function createGalleryDerivedData(
+  categories: readonly Category[],
+  stickers: readonly Sticker[],
+) {
+  const descendantMap = createCategoryDescendantMap(categories);
+  return {
+    descendantMap,
+    categoryCounts: countStickersByCategoryTree(categories, stickers, descendantMap),
+    tagsByCategory: countTagsByCategoryTree(categories, stickers, descendantMap),
+  };
+}
+
+function getTopTags(
+  tagsByCategory: ReadonlyMap<string | null, CategoryTagCount[]>,
+  category: string | null,
+) {
+  return tagsByCategory.get(category) ?? tagsByCategory.get(null) ?? [];
 }
 
 function EmptyState() {

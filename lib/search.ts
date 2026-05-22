@@ -9,7 +9,7 @@ interface FilterOptions {
   tags: readonly string[];
 }
 
-export function createFuse(stickers: Sticker[]) {
+export function createFuse(stickers: readonly Sticker[]) {
   return new Fuse(stickers, {
     keys: [
       { name: "name", weight: 0.6 },
@@ -23,7 +23,7 @@ export function createFuse(stickers: Sticker[]) {
 }
 
 export function filterStickers(
-  stickers: Sticker[],
+  stickers: readonly Sticker[],
   fuse: Fuse<Sticker> | null,
   opts: FilterOptions,
 ): Sticker[] {

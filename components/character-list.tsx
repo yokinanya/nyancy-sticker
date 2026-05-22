@@ -19,9 +19,8 @@ export function CharacterList({ characters }: Props) {
           <li key={character.id} className="motion-list-item">
             <Link
               href={`/${encodeURIComponent(character.id)}`}
-              prefetch={false}
               onClick={() => setNavigatingId(character.id)}
-              className="motion-interactive flex items-center justify-between px-4 py-3 hover:bg-default-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className={`motion-press flex items-center justify-between px-4 py-3 hover:bg-default-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${isNavigating ? "motion-selection bg-primary/10" : ""}`}
               aria-busy={isNavigating}
             >
               <span className="text-base font-medium">{character.name}</span>

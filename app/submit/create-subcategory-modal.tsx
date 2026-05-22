@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button, Input, Modal } from "@heroui/react";
+import { useFeedback } from "@/components/feedback";
 import type { Category } from "@/lib/types";
 import { createSubcategoryForSubmit } from "./actions";
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreated }: Props) {
+  const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -27,9 +29,12 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
     startTransition(async () => {
       try {
         const result = await createSubcategoryForSubmit(fd);
+        feedback.success(`已创建分类：${result.name}`);
         onCreated({ id: result.id, name: result.name, parentId });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "创建失败。");
+        const message = e instanceof Error ? e.message : "创建失败。";
+        setError(message);
+        feedback.error(message);
       }
     });
   };
@@ -38,8 +43,12 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
     <Modal>
       <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal.Container>
-          <Modal.Dialog className="motion-panel modal-surface w-full max-w-md">
-            <Modal.CloseTrigger />
+          <Modal.Dialog className={`motion-panel modal-surface w-full max-w-md ${error ? "motion-shake" : ""}`}>
+            <Modal.CloseTrigger className="motion-press absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
+              <span aria-hidden="true">
+                ×
+              </span>
+            </Modal.CloseTrigger>
             <Modal.Header>
               <Modal.Heading>在「{parentName}」下新建子分类</Modal.Heading>
             </Modal.Header>
@@ -71,10 +80,10 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
             </Modal.Body>
             <Modal.Footer>
               <div className="flex w-full flex-col justify-end gap-2 sm:flex-row">
-                <Button variant="ghost" onPress={onClose}>
+                <Button variant="ghost" onPress={onClose} className="motion-press">
                   取消
                 </Button>
-                <Button variant="primary" isPending={pending} onPress={submit}>
+                <Button variant="primary" isPending={pending} onPress={submit} className="motion-press">
                   创建
                 </Button>
               </div>

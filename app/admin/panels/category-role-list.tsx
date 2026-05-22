@@ -1,10 +1,11 @@
-import { Chip } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import type { CategoryWithCount } from "@/lib/queries/categories";
 
 interface RoleListProps {
   roles: readonly CategoryWithCount[];
   categories: readonly CategoryWithCount[];
   selectedId: string | null;
+  onAddRole: () => void;
   onSelect: (id: string) => void;
 }
 
@@ -12,16 +13,27 @@ export function RoleList({
   roles,
   categories,
   selectedId,
+  onAddRole,
   onSelect,
 }: RoleListProps) {
   if (roles.length === 0) {
-    return <p className="admin-panel p-6 text-center text-sm text-default-500">还没有任何角色。</p>;
+    return (
+      <aside className="admin-panel p-4">
+        <Button variant="primary" onPress={onAddRole} className="motion-press">
+          新增角色
+        </Button>
+        <p className="mt-4 text-center text-sm text-default-500">还没有任何角色。</p>
+      </aside>
+    );
   }
 
   return (
     <aside className="admin-panel overflow-hidden">
-      <div className="border-b border-default-100 p-3">
+      <div className="flex items-center justify-between gap-3 border-b border-default-100 p-3">
         <h2 className="admin-section-title">角色</h2>
+        <Button size="sm" variant="primary" onPress={onAddRole} className="motion-press">
+          新增
+        </Button>
       </div>
       <div className="flex flex-col gap-1 p-2">
         {roles.map((role) => (
@@ -58,7 +70,7 @@ function RoleButton({
       onClick={() => onSelect(role.id)}
       className={`rounded-lg border p-3 text-left transition ${
         selected
-          ? "border-primary bg-primary/10"
+          ? "motion-selection border-primary bg-primary/10"
           : "border-transparent hover:border-default-200 hover:bg-default-50 dark:hover:bg-default-100/5"
       }`}
     >

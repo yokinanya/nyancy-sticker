@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { Button, Modal } from "@heroui/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { copyImage, copyText, downloadFile } from "@/lib/clipboard";
+import { useFeedback } from "@/components/feedback";
 import { useFilterStore } from "@/lib/store";
 import type { Sticker } from "@/lib/types";
 
@@ -13,30 +14,15 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-type Toast = { msg: string; tone: "success" | "error" } | null;
-
 export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
   const [busy, setBusy] = useState<"image" | "link" | "download" | null>(null);
-  const [toast, setToast] = useState<Toast>(null);
-  const toastTimer = useRef<number | null>(null);
+  const feedback = useFeedback();
   const pushRecent = useFilterStore((s) => s.pushRecent);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    };
-  }, []);
 
   if (!sticker) return null;
 
   const filename = `${sticker.name || sticker.id}.${sticker.ext}`;
   const isGif = sticker.ext === "gif";
-
-  const flash = (t: Toast, ms = 2000) => {
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    setToast(t);
-    if (t) toastTimer.current = window.setTimeout(() => setToast(null), ms);
-  };
 
   const onCopyImage = async () => {
     if (busy) return;
@@ -45,7 +31,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
     setBusy(null);
     if (r.ok) {
       pushRecent(sticker.id);
-      flash({ msg: "图片已复制，去粘贴吧～", tone: "success" });
+      feedback.success("图片已复制，去粘贴吧～");
     } else {
       const map = {
         unsupported: "当前浏览器不支持复制图片，请改用「复制链接」或「下载」",
@@ -53,7 +39,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
         denied: "复制被拒绝，请确认浏览器权限",
         "decode-failed": "图片解码失败（GIF 仅会复制首帧，建议直接下载）",
       } as const;
-      flash({ msg: map[r.reason], tone: "error" }, 3500);
+      feedback.error(map[r.reason]);
     }
   };
 
@@ -63,11 +49,8 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
     const ok = await copyText(sticker.src);
     setBusy(null);
     pushRecent(sticker.id);
-    flash(
-      ok
-        ? { msg: "链接已复制", tone: "success" }
-        : { msg: "复制失败，请手动复制", tone: "error" },
-    );
+    if (ok) feedback.success("链接已复制");
+    else feedback.error("复制失败，请手动复制");
   };
 
   const onDownload = async () => {
@@ -76,9 +59,9 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
     try {
       await downloadFile(sticker.src, filename);
       pushRecent(sticker.id);
-      flash({ msg: "已开始下载", tone: "success" });
+      feedback.success("已开始下载");
     } catch {
-      flash({ msg: "下载失败，已尝试新标签页打开", tone: "error" });
+      feedback.error("下载失败，已尝试新标签页打开");
     } finally {
       setBusy(null);
     }
@@ -89,7 +72,11 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
         <Modal.Container>
           <Modal.Dialog className="motion-panel modal-surface w-full max-w-lg">
-            <Modal.CloseTrigger />
+            <Modal.CloseTrigger className="motion-press absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
+              <span aria-hidden="true">
+                ×
+              </span>
+            </Modal.CloseTrigger>
             <Modal.Header>
               <Modal.Heading>{sticker.name}</Modal.Heading>
             </Modal.Header>
@@ -122,18 +109,6 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                     </span>
                   ))}
                 </div>
-                {toast && (
-                  <div
-                    role="status"
-                    className={`rounded-md px-3 py-1.5 text-sm ${
-                      toast.tone === "success"
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                        : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                    }`}
-                  >
-                    {toast.msg}
-                  </div>
-                )}
               </div>
             </Modal.Body>
             <Modal.Footer>
@@ -143,7 +118,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                     isDisabled={busy !== null && busy !== "image"}
                     isPending={busy === "image"}
                   onPress={onCopyImage}
-                    className="motion-interactive"
+                    className="motion-press"
                   >
                     复制图片
                   </Button>
@@ -153,7 +128,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   isDisabled={busy !== null && busy !== "link"}
                   isPending={busy === "link"}
                   onPress={onCopyLink}
-                  className="motion-interactive"
+                  className="motion-press"
                 >
                   复制链接
                 </Button>
@@ -162,7 +137,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   isDisabled={busy !== null && busy !== "download"}
                   isPending={busy === "download"}
                   onPress={onDownload}
-                  className="motion-interactive"
+                  className="motion-press"
                 >
                   下载
                 </Button>

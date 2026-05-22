@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
+import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { uploadStickerFile } from "@/lib/upload";
 
 export async function bulkUpdateStickers(formData: FormData): Promise<void> {
@@ -204,6 +205,7 @@ function splitTags(value: string): string[] {
 }
 
 function revalidateAdminPages() {
+  revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
   revalidatePath("/admin");
   revalidatePath("/");
 }

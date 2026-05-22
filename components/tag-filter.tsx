@@ -1,18 +1,16 @@
 "use client";
 
 import { Button } from "@heroui/react";
-import { useFilterStore } from "@/lib/store";
 
 interface Props {
   /** 可用标签按使用频率降序 */
   tags: { tag: string; count: number }[];
+  selected: readonly string[];
+  onToggle: (tag: string) => void;
+  onClear: () => void;
 }
 
-export function TagFilter({ tags }: Props) {
-  const selected = useFilterStore((s) => s.tags);
-  const toggle = useFilterStore((s) => s.toggleTag);
-  const clear = useFilterStore((s) => s.clearTags);
-
+export function TagFilter({ tags, selected, onToggle, onClear }: Props) {
   if (tags.length === 0) return null;
 
   return (
@@ -24,15 +22,15 @@ export function TagFilter({ tags }: Props) {
             key={tag}
             size="sm"
             variant={active ? "primary" : "ghost"}
-            onPress={() => toggle(tag)}
-            className="motion-interactive"
+            onPress={() => onToggle(tag)}
+            className={`motion-press ${active ? "motion-selection" : ""}`}
           >
             #{tag} <span className="opacity-60">·{count}</span>
           </Button>
         );
       })}
       {selected.length > 0 && (
-        <Button size="sm" variant="ghost" onPress={clear} className="motion-interactive">
+        <Button size="sm" variant="ghost" onPress={onClear} className="motion-press">
           清空标签
         </Button>
       )}
