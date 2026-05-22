@@ -15,11 +15,8 @@ const serverActionBodySizeLimit = (
   process.env.NEXT_SERVER_ACTION_BODY_SIZE_LIMIT ?? "100mb"
 ) as ServerActionsConfig["bodySizeLimit"];
 
-const r2PublicHost = process.env.NEXT_PUBLIC_R2_HOST;
-
-if (!r2PublicHost) {
-  throw new Error("缺少环境变量 NEXT_PUBLIC_R2_HOST");
-}
+const DEFAULT_R2_PUBLIC_HOST = "s3.yokina.moe";
+const r2PublicHost = process.env.NEXT_PUBLIC_R2_HOST ?? DEFAULT_R2_PUBLIC_HOST;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
