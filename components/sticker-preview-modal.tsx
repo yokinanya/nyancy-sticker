@@ -94,6 +94,9 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   <span className="rounded-full bg-zinc-200 px-2 py-0.5 dark:bg-zinc-700">
                     {sticker.category}
                   </span>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    ID: {sticker.id}
+                  </span>
                   {sticker.tags.map((t) => (
                     <span
                       key={t}
