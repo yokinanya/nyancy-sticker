@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/heroui-compat";
 
 interface Props {
   user: {

@@ -4,7 +4,6 @@ import {
   type StickerStatus,
 } from "@/lib/queries/admin-stickers";
 import { listCachedCategories } from "@/lib/queries/categories";
-import { StickersFilters } from "./stickers-filters";
 import { StickersTable } from "./stickers-table";
 
 const VALID_STATUS: readonly StickerStatus[] = ["approved", "pending", "rejected"];
@@ -32,6 +31,7 @@ export async function StickersPanel({ searchParams }: Props) {
   const character = single(searchParams.character);
   const category = single(searchParams.category);
   const q = single(searchParams.q);
+  const submitter = single(searchParams.submitter);
   const sort = single(searchParams.sort);
   const page = Math.max(1, Number.parseInt(single(searchParams.page) ?? "1", 10) || 1);
   const pageSize = Math.min(
@@ -48,6 +48,7 @@ export async function StickersPanel({ searchParams }: Props) {
       characterId: character,
       categoryId: category,
       q,
+      submitter,
       sort: readSort(sort),
       page,
       pageSize,
@@ -57,10 +58,6 @@ export async function StickersPanel({ searchParams }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <StickersFilters
-        categories={categories}
-        current={{ status, character, category, q, sort, pageSize }}
-      />
       <StickersTable
         items={result.items}
         categories={categories}

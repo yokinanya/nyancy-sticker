@@ -1,13 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "./search-bar";
 import { CategoryTabs } from "./category-tabs";
 import { TagFilter } from "./tag-filter";
 import { StickerGrid } from "./sticker-grid";
-import { StickerPreviewModal } from "./sticker-preview-modal";
 import { useFilterStore } from "@/lib/store";
-import { createFuse, filterStickers } from "@/lib/search";
 import {
   countTagsByCategoryTree,
   countStickersByCategoryTree,
@@ -16,6 +15,11 @@ import {
   type CategoryTagCount,
 } from "@/lib/categories";
 import type { Category, Manifest, Sticker } from "@/lib/types";
+
+const StickerPreviewModal = dynamic(
+  () => import("./sticker-preview-modal").then((module) => module.StickerPreviewModal),
+  { ssr: false },
+);
 
 interface Props {
   manifest: Manifest;
@@ -30,7 +34,7 @@ export function StickerGallery({
 }: Props) {
   const { categories, stickers } = manifest;
   const filters = useScopedFilters(characterId, categories);
-  const fuse = useFuseIndex(stickers);
+  const fuse = useFuseIndex(stickers, filters.deferredQuery);
   const derived = useMemo(
     () => createGalleryDerivedData(categories, stickers),
     [categories, stickers],
@@ -113,22 +117,35 @@ function useScopedFilters(characterId: string, categories: readonly Category[]) 
 
 type GalleryFilters = ReturnType<typeof useScopedFilters>;
 
-function useFuseIndex(stickers: readonly Sticker[]) {
-  const [fuse, setFuse] = useState<ReturnType<typeof createFuse> | null>(null);
+type FuseIndex = {
+  search: (query: string) => { item: Sticker }[];
+};
+
+function useFuseIndex(stickers: readonly Sticker[], query: string) {
+  const [fuse, setFuse] = useState<FuseIndex | null>(null);
 
   useEffect(() => {
+    if (!query.trim()) return;
+    let cancelled = false;
     const idle =
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
         .requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1));
-    idle(() => setFuse(createFuse(stickers)));
-  }, [stickers]);
+    idle(() => {
+      void import("@/lib/search").then(({ createFuse }) => {
+        if (!cancelled) setFuse(createFuse(stickers));
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stickers, query]);
 
   return fuse;
 }
 
 function useFilteredStickers(
   stickers: readonly Sticker[],
-  fuse: ReturnType<typeof createFuse> | null,
+  fuse: FuseIndex | null,
   filters: GalleryFilters,
   descendantMap: ReadonlyMap<string, ReadonlySet<string>>,
 ) {
@@ -138,14 +155,31 @@ function useFilteredStickers(
   }, [filters.deferredCategory, descendantMap]);
 
   return useMemo(
-    () =>
-      filterStickers(stickers, fuse, {
-        query: filters.deferredQuery,
-        categoryIds: selectedCategoryIds,
-        tags: filters.deferredTags,
-      }),
+    () => filterStickers(stickers, fuse, filters.deferredQuery, selectedCategoryIds, filters.deferredTags),
     [stickers, fuse, filters.deferredQuery, selectedCategoryIds, filters.deferredTags],
   );
+}
+
+function filterStickers(
+  stickers: readonly Sticker[],
+  fuse: FuseIndex | null,
+  query: string,
+  categoryIds: ReadonlySet<string> | null,
+  tags: readonly string[],
+) {
+  const text = query.trim();
+  const pool = text && fuse ? fuse.search(text).map((result) => result.item) : stickers;
+  return pool.filter((sticker) => matchesFilters(sticker, categoryIds, tags));
+}
+
+function matchesFilters(
+  sticker: Sticker,
+  categoryIds: ReadonlySet<string> | null,
+  tags: readonly string[],
+) {
+  if (categoryIds && !categoryIds.has(sticker.category)) return false;
+  if (tags.length === 0) return true;
+  return tags.every((tag) => sticker.tags.includes(tag));
 }
 
 function useGlobalSearchShortcut() {
@@ -228,8 +262,7 @@ function getTopTags(
 
 function EmptyState() {
   return (
-    <div className="motion-panel flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 px-4 py-16 text-center text-zinc-500 dark:border-zinc-700">
-      <div className="text-4xl">🐈‍⬛</div>
+    <div className="motion-panel flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border-subtle bg-surface/70 px-4 py-14 text-center text-muted">
       <div className="text-sm">没找到匹配的表情包，换个关键词试试？</div>
     </div>
   );

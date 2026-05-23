@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { memo } from "react";
-import { Button, Chip, ListBox, Select } from "@heroui/react";
-import type { AdminStickerRow, StickerSort, StickerStatus } from "@/lib/queries/admin-stickers";
+import { Button, Chip, ListBox, Select } from "@/components/ui/heroui-compat";
+import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
 
-const STATUS_LABEL: Record<StickerStatus, string> = {
+export const STATUS_LABEL: Record<StickerStatus, string> = {
   approved: "已发布",
   pending: "待审核",
   rejected: "已拒绝",
@@ -27,37 +27,6 @@ export function StatusChip({ status }: { status: StickerStatus }) {
     <Chip size="sm" variant={STATUS_COLOR[status]}>
       <Chip.Label>{STATUS_LABEL[status]}</Chip.Label>
     </Chip>
-  );
-}
-
-export function SortableHeader({
-  label,
-  sort,
-  asc,
-  desc,
-  onSort,
-}: {
-  label: string;
-  sort: StickerSort;
-  asc: StickerSort;
-  desc: StickerSort;
-  onSort: (sort: StickerSort) => void;
-}) {
-  const isAsc = sort === asc;
-  const indicator = isAsc ? "↑" : sort === desc ? "↓" : "";
-
-  return (
-    <th className="p-3">
-      <Button
-        size="sm"
-        variant="ghost"
-        onPress={() => onSort(isAsc ? desc : asc)}
-        className="motion-press -ml-2 h-8 min-w-0 px-2 text-xs text-default-500"
-      >
-        {label}
-        <span className="inline-block w-3 text-center">{indicator}</span>
-      </Button>
-    </th>
   );
 }
 
@@ -97,11 +66,13 @@ export function PageSizeSelect({
 }
 
 export const StickerMobileCard = memo(function StickerMobileCard({
+  categoryDisplay,
   item,
   selected,
   onToggle,
   onEdit,
 }: {
+  categoryDisplay: string;
   item: AdminStickerRow;
   selected: boolean;
   onToggle: (id: string) => void;
@@ -112,12 +83,12 @@ export const StickerMobileCard = memo(function StickerMobileCard({
       <div className="flex gap-3">
         <div className="relative h-20 w-20 flex-none overflow-hidden rounded-lg bg-default-100">
           <Image
-            src={item.src}
+            src={item.previewSrc}
             alt={item.name}
             fill
             sizes="80px"
             className="object-contain p-1.5"
-            unoptimized={item.ext === "gif"}
+            unoptimized
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -141,7 +112,7 @@ export const StickerMobileCard = memo(function StickerMobileCard({
           <div className="mt-2 flex flex-wrap gap-1">
             <StatusChip status={item.status} />
             <Chip size="sm" variant="soft">
-              <Chip.Label>{item.categoryId}</Chip.Label>
+              <Chip.Label>{categoryDisplay}</Chip.Label>
             </Chip>
           </div>
         </div>

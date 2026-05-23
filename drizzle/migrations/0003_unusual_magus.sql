@@ -1,0 +1,1 @@
+ALTER TABLE "sticker" ADD COLUMN "previewSrc" text;

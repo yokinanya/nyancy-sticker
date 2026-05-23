@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Modal } from "@heroui/react";
+import { Button, Input, Modal } from "@/components/ui/heroui-compat";
 import { addCategory, updateCategory } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
 import type { CategoryWithCount } from "@/lib/queries/categories";
@@ -26,9 +26,12 @@ export function CategoryManager({ categories }: Props) {
   const [pending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [query, setQuery] = useState("");
 
   const topLevels = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
-  const selected = topLevels.find((c) => c.id === selectedId) ?? topLevels[0] ?? null;
+  const visibleRoles = useMemo(() => filterRoles(categories, topLevels, query), [categories, query, topLevels]);
+  const selected =
+    topLevels.find((c) => c.id === selectedId) ?? visibleRoles[0] ?? topLevels[0] ?? null;
   const subcategories = selected ? categories.filter((c) => c.parentId === selected.id) : [];
 
   const submit: SubmitHandler = (action, fd, done) => {
@@ -48,11 +51,14 @@ export function CategoryManager({ categories }: Props) {
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <RoleList
-          roles={topLevels}
+          roles={visibleRoles}
           categories={categories}
+          query={query}
           selectedId={selected?.id ?? null}
           onAddRole={() => setDraft({ mode: "add-role", parent: null, target: null })}
+          onQueryChange={setQuery}
           onSelect={setSelectedId}
+          totalRoles={topLevels.length}
         />
         <CategoryDetail
           selected={selected}
@@ -120,19 +126,23 @@ function CategoryEditorModal({
             </Modal.Header>
             <Modal.Body>
               <div className="grid gap-3">
-                <Input
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  placeholder="id（slug）"
-                  disabled={Boolean(target)}
-                  className="field-control px-3"
-                />
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="显示名"
-                  className="field-control px-3"
-                />
+                <Field label="ID">
+                  <Input
+                    value={id}
+                    onChange={(e) => setId(e.target.value)}
+                    placeholder="id（slug）"
+                    disabled={Boolean(target)}
+                    className="field-control px-3"
+                  />
+                </Field>
+                <Field label="显示名">
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="显示名"
+                    className="field-control px-3"
+                  />
+                </Field>
               </div>
             </Modal.Body>
             <Modal.Footer>
@@ -154,4 +164,32 @@ function getDraftTitle(draft: Draft) {
   if (draft.mode === "add-role") return "新增角色";
   if (draft.mode === "add-subcategory") return "新增分类";
   return draft.target?.parentId ? "编辑分类" : "编辑角色";
+}
+
+function filterRoles(
+  categories: readonly CategoryWithCount[],
+  roles: readonly CategoryWithCount[],
+  query: string,
+) {
+  const text = query.trim().toLowerCase();
+  if (!text) return roles;
+  const matchedRoleIds = new Set<string>();
+  categories.forEach((category) => {
+    if (!matchesCategory(category, text)) return;
+    matchedRoleIds.add(category.parentId ?? category.id);
+  });
+  return roles.filter((role) => matchedRoleIds.has(role.id));
+}
+
+function matchesCategory(category: CategoryWithCount, text: string) {
+  return category.name.toLowerCase().includes(text) || category.id.toLowerCase().includes(text);
+}
+
+function Field({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <div className="grid gap-1">
+      <label className="text-xs text-default-500">{label}</label>
+      {children}
+    </div>
+  );
 }

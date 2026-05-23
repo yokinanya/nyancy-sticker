@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button, Input, Modal } from "@heroui/react";
+import { Button, Input, Modal } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
 import type { Category } from "@/lib/types";
 import { createSubcategoryForSubmit } from "./actions";

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Chip, Input, ListBox, ProgressBar, Select } from "@heroui/react";
+import { Button, Chip, Input, ListBox, ProgressBar, Select } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
 import type { Category } from "@/lib/types";
 import {

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: dark)", color: "#121212" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -54,7 +54,7 @@ export default async function RootLayout({
         <Providers lang={lang}>
           <div className="flex min-h-dvh flex-col">
             <SiteHeader />
-            <main className="flex-1 bg-[linear-gradient(180deg,rgb(250_250_250),rgb(244_244_245))] dark:bg-[linear-gradient(180deg,rgb(9_9_11),rgb(24_24_27))]">
+            <main className="app-shell flex-1">
               {children}
             </main>
           </div>

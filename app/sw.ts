@@ -18,6 +18,7 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 const R2_HOST = "s3.yokina.moe";
+const DEPRECATED_CACHES = ["r2-stickers-v1", "next-image-v1"] as const;
 
 const dynamicPaths: RuntimeCaching = {
   matcher: ({ url, sameOrigin }) =>
@@ -29,16 +30,17 @@ const dynamicPaths: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
-const r2Stickers: RuntimeCaching = {
+const r2Previews: RuntimeCaching = {
   matcher: ({ url }) =>
     url.hostname === R2_HOST &&
-    /\.(png|webp|jpe?g|gif|avif)$/i.test(url.pathname),
+    url.pathname.startsWith("/previews/") &&
+    /\.(webp|gif)$/i.test(url.pathname),
   handler: new CacheFirst({
-    cacheName: "r2-stickers-v1",
+    cacheName: "r2-previews-v1",
     plugins: [
       new ExpirationPlugin({
-        maxEntries: 600,
-        maxAgeSeconds: 60 * 60 * 24 * 30,
+        maxEntries: 300,
+        maxAgeSeconds: 60 * 60 * 24 * 14,
         purgeOnQuotaError: true,
       }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
@@ -46,25 +48,18 @@ const r2Stickers: RuntimeCaching = {
   }),
 };
 
-const nextImageCache: RuntimeCaching = {
-  matcher: ({ url, sameOrigin }) =>
-    sameOrigin && url.pathname.startsWith("/_next/image"),
-  handler: new CacheFirst({
-    cacheName: "next-image-v1",
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 300,
-        maxAgeSeconds: 60 * 60 * 24 * 30,
-        purgeOnQuotaError: true,
-      }),
-    ],
-  }),
+const r2Originals: RuntimeCaching = {
+  matcher: ({ url }) =>
+    url.hostname === R2_HOST &&
+    !url.pathname.startsWith("/previews/") &&
+    /\.(png|webp|jpe?g|gif|avif)$/i.test(url.pathname),
+  handler: new NetworkOnly(),
 };
 
 const runtimeCaching: RuntimeCaching[] = [
   dynamicPaths,
-  r2Stickers,
-  nextImageCache,
+  r2Previews,
+  r2Originals,
   ...defaultCache,
 ];
 
@@ -74,6 +69,10 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching,
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(Promise.all(DEPRECATED_CACHES.map((cacheName) => caches.delete(cacheName))));
 });
 
 serwist.addEventListeners();

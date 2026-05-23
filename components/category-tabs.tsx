@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs } from "@heroui/react";
+import { Tabs } from "@/components/ui/heroui-compat";
 import { useMemo } from "react";
 import type { Category } from "@/lib/types";
 import {
@@ -17,10 +17,7 @@ interface Props {
   hideTopLevel?: boolean;
 }
 
-const scrollableTabListClass =
-  "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
-const tabClass =
-  "motion-press ui-selected-tab w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
+const scrollableTabListClass = "category-tab-list";
 
 export function CategoryTabs({
   categories,
@@ -35,6 +32,7 @@ export function CategoryTabs({
     : defaultCategory;
   const activeParent = findActiveParent(categories, effectiveCategory);
   const childIds = activeParent ? childCategoryIds(categories, activeParent.id) : [];
+  const topCategories = useMemo(() => topLevelCategories(categories), [categories]);
   const childCategories = categories.filter((item) => childIds.includes(item.id));
   const selectTopCategory = (id: string) => {
     const firstChildId = childCategoryIds(categories, id)[0];
@@ -44,42 +42,65 @@ export function CategoryTabs({
   return (
     <div className="flex flex-col gap-2">
       {hideTopLevel ? null : (
-        <Tabs
-          aria-label="角色"
-          selectedKey={activeParent?.id ?? undefined}
-          onSelectionChange={(k) => selectTopCategory(String(k))}
-        >
-          <Tabs.List
-            aria-label="角色"
-            className={scrollableTabListClass}
-          >
-            {topLevelCategories(categories).map((c) => (
-              <Tabs.Tab key={c.id} id={c.id} className={tabClass}>
-                {c.name} · {counts[c.id] ?? 0}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
+        <CategoryTabGroup
+          ariaLabel="角色"
+          categories={topCategories}
+          counts={counts}
+          selectedKey={activeParent?.id}
+          onSelectionChange={selectTopCategory}
+        />
       )}
       {childCategories.length > 0 ? (
-        <Tabs
-          aria-label="分类"
-          selectedKey={effectiveCategory ?? undefined}
-          onSelectionChange={(k) => onCategoryChange(String(k))}
-        >
-          <Tabs.List
-            aria-label="分类"
-            className={scrollableTabListClass}
-          >
-            {childCategories.map((c) => (
-              <Tabs.Tab key={c.id} id={c.id} className={tabClass}>
-                {c.name} · {counts[c.id] ?? 0}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
+        <CategoryTabGroup
+          ariaLabel="分类"
+          categories={childCategories}
+          counts={counts}
+          selectedKey={effectiveCategory}
+          onSelectionChange={onCategoryChange}
+        />
       ) : null}
     </div>
+  );
+}
+
+function CategoryTabGroup({
+  ariaLabel,
+  categories,
+  counts,
+  selectedKey,
+  onSelectionChange,
+}: {
+  ariaLabel: string;
+  categories: readonly Category[];
+  counts: Record<string, number>;
+  selectedKey?: string | null;
+  onSelectionChange: (id: string) => void;
+}) {
+  return (
+    <Tabs
+      aria-label={ariaLabel}
+      selectedKey={selectedKey ?? undefined}
+      onSelectionChange={(key) => onSelectionChange(String(key))}
+    >
+      <Tabs.List aria-label={ariaLabel} className={scrollableTabListClass}>
+        {categories.map((category) => (
+          <CategoryTab key={category.id} category={category} count={counts[category.id] ?? 0} />
+        ))}
+      </Tabs.List>
+    </Tabs>
+  );
+}
+
+function CategoryTab({ category, count }: { category: Category; count: number }) {
+  return (
+    <Tabs.Tab
+      id={category.id}
+      className="category-tab ui-focus"
+      title={`${category.name} · ${count}`}
+    >
+      <span className="category-tab-label">{category.name}</span>
+      <span className="category-tab-count">{count}</span>
+    </Tabs.Tab>
   );
 }
 

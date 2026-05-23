@@ -11,26 +11,25 @@ interface Props {
 }
 
 function StickerCardComponent({ sticker, onOpen, priority }: Props) {
-  const isGif = sticker.ext === "gif";
   return (
     <button
       type="button"
       onClick={() => onOpen(sticker)}
-      className="motion-press ui-focus group relative aspect-square w-full overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm hover:border-accent/60 hover:shadow-md focus-visible:ring-2 focus-visible:ring-accent dark:border-white/10 dark:bg-zinc-900"
+      className="motion-press ui-focus group relative aspect-square w-full overflow-hidden rounded-lg border border-border-subtle bg-surface-raised shadow-sm hover:border-accent/60 hover:shadow-md"
       aria-label={`查看 ${sticker.name}`}
     >
+      <span className="absolute inset-1 rounded-md bg-surface-muted/80" aria-hidden="true" />
       <Image
-        src={sticker.src}
+        src={sticker.previewSrc}
         alt={sticker.name}
         fill
         sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 160px"
         className="object-contain p-2 transition duration-200 ease-out group-hover:scale-105"
-        unoptimized={isGif}
-        loading={isGif && !priority ? "lazy" : undefined}
+        unoptimized
         priority={priority}
         fetchPriority={priority ? "high" : "auto"}
       />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-xs text-white transition duration-200 ease-out group-hover:translate-y-0">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-foreground/75 to-transparent p-2 text-left text-xs text-background transition duration-200 ease-out group-hover:translate-y-0">
         <div className="truncate font-medium">{sticker.name}</div>
         {sticker.tags.length > 0 && (
           <div className="mt-0.5 truncate opacity-80">

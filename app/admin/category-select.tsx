@@ -1,6 +1,6 @@
 "use client";
 
-import { Autocomplete, Input, ListBox } from "@heroui/react";
+import { Autocomplete, Input, ListBox } from "@/components/ui/heroui-compat";
 import { useMemo, useState } from "react";
 import type { Category } from "@/lib/types";
 import { categoryLabel } from "@/lib/categories";

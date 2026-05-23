@@ -26,7 +26,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: serverActionBodySizeLimit,
     },
-    optimizePackageImports: ["@heroui/react"],
   },
   images: {
     remotePatterns: [

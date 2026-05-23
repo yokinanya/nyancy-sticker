@@ -2,26 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { Button, Chip, ListBox, Select } from "@heroui/react";
+import { Button, Chip } from "@/components/ui/heroui-compat";
 import type { AdminUserRow, Role } from "@/lib/queries/users";
 import { changeUserRole } from "@/app/admin/users-actions";
 import { useFeedback } from "@/components/feedback";
-
-const ROLE_LABEL: Record<Role, string> = {
-  user: "用户",
-  editor: "管理员",
-  admin: "超级管理员",
-};
-const ROLE_COLOR: Record<Role, "primary" | "secondary" | "soft"> = {
-  admin: "primary",
-  editor: "secondary",
-  user: "soft",
-};
-const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "user", label: "用户" },
-  { value: "editor", label: "管理员" },
-  { value: "admin", label: "超级管理员" },
-];
+import { ROLE_COLOR, ROLE_LABEL, UserRoleSelector } from "./user-role-selector";
 
 interface Props {
   items: readonly AdminUserRow[];
@@ -154,7 +139,7 @@ export function UsersTable({
                           {isSelf ? "不能修改自己" : "受环境变量保护"}
                         </span>
                       ) : (
-                        <RoleSelector
+                        <UserRoleSelector
                           value={u.role}
                           disabled={pending}
                           onChange={(role) => submitRole(u.id, role)}
@@ -248,7 +233,7 @@ function UserMobileCard({
             {isSelf ? "不能修改自己" : "受环境变量保护"}
           </span>
         ) : (
-          <RoleSelector
+          <UserRoleSelector
             value={user.role}
             disabled={pending}
             onChange={(role) => onChangeRole(user.id, role)}
@@ -271,46 +256,5 @@ function GithubLogin({
     <span className="text-warning">
       {compact ? "未写入 GitHub login" : "未写入 GitHub login，重新 GitHub 登录后会补写"}
     </span>
-  );
-}
-
-function RoleSelector({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: Role;
-  disabled: boolean;
-  onChange: (role: Role) => void;
-}) {
-  return (
-    <Select
-      aria-label="角色"
-      selectedKey={value}
-      isDisabled={disabled}
-      onSelectionChange={(key) => {
-        const next = String(key) as Role;
-        if (next !== value) onChange(next);
-      }}
-    >
-      <Select.Trigger className="field-trigger">
-        <Select.Value />
-        <Select.Indicator />
-      </Select.Trigger>
-      <Select.Popover className="motion-popover popover-surface">
-        <ListBox>
-          {ROLE_OPTIONS.map((o) => (
-            <ListBox.Item
-              key={o.value}
-              id={o.value}
-              textValue={o.label}
-              className="listbox-option"
-            >
-              {o.label}
-            </ListBox.Item>
-          ))}
-        </ListBox>
-      </Select.Popover>
-    </Select>
   );
 }

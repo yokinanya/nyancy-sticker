@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Button, Modal } from "@heroui/react";
+import { Button, Modal } from "@/components/ui/heroui-compat";
 import { useState } from "react";
 import { copyImage, copyText, downloadFile } from "@/lib/clipboard";
 import { useFeedback } from "@/components/feedback";
@@ -82,7 +82,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
             </Modal.Header>
             <Modal.Body>
               <div className="flex flex-col items-center gap-4">
-                <div className="relative aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                <div className="relative aspect-square w-full max-w-sm overflow-hidden rounded-lg bg-surface-muted">
                   <Image
                     src={sticker.src}
                     alt={sticker.name}
@@ -94,16 +94,16 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   />
                 </div>
                 <div className="flex flex-wrap justify-center gap-1.5 text-xs">
-                  <span className="rounded-full bg-zinc-200 px-2 py-0.5 dark:bg-zinc-700">
+                  <span className="rounded-full border border-border-subtle bg-surface-raised px-2 py-0.5">
                     {sticker.category}
                   </span>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  <span className="rounded-full border border-border-subtle bg-surface-muted px-2 py-0.5 font-mono text-muted">
                     ID: {sticker.id}
                   </span>
                   {sticker.tags.map((t) => (
                     <span
                       key={t}
-                      className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                      className="rounded-full border border-border-subtle bg-surface-muted px-2 py-0.5 text-muted"
                     >
                       #{t}
                     </span>
@@ -117,7 +117,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   <Button
                     isDisabled={busy !== null && busy !== "image"}
                     isPending={busy === "image"}
-                  onPress={onCopyImage}
+                    onPress={onCopyImage}
                     className="motion-press"
                   >
                     复制图片

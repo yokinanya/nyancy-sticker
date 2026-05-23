@@ -61,6 +61,7 @@ export async function uploadStickers(formData: FormData): Promise<void> {
         id: uploaded.hash,
         name: uploaded.baseName,
         src: uploaded.src,
+        previewSrc: uploaded.previewSrc,
         width: uploaded.width,
         height: uploaded.height,
         ext: uploaded.ext,
@@ -135,29 +136,6 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   const used = await db.query.stickers.findFirst({ where: eq(stickers.categoryId, id) });
   if (used) throw new Error(`分类仍被使用，不能删除：${id}`);
   await db.delete(categories).where(eq(categories.id, id));
-  revalidateAdminPages();
-}
-
-export async function renameTag(formData: FormData): Promise<void> {
-  await requireEditor();
-  const from = readText(formData, "tagFrom");
-  const to = readText(formData, "tagTo");
-  await db
-    .update(stickers)
-    .set({
-      tags: sql`(SELECT ARRAY(SELECT DISTINCT CASE WHEN t = ${from} THEN ${to} ELSE t END FROM unnest(${stickers.tags}) AS t))`,
-    })
-    .where(sql`${from} = ANY(${stickers.tags})`);
-  revalidateAdminPages();
-}
-
-export async function deleteTag(formData: FormData): Promise<void> {
-  await requireEditor();
-  const tag = readText(formData, "tag");
-  await db
-    .update(stickers)
-    .set({ tags: sql`array_remove(${stickers.tags}, ${tag})` })
-    .where(sql`${tag} = ANY(${stickers.tags})`);
   revalidateAdminPages();
 }
 

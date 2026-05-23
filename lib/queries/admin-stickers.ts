@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { categories, stickers, users } from "@/drizzle/schema";
@@ -9,6 +9,7 @@ export interface AdminStickerRow {
   id: string;
   name: string;
   src: string;
+  previewSrc: string;
   width: number;
   height: number;
   ext: "png" | "gif" | "webp" | "jpg" | "jpeg";
@@ -28,6 +29,7 @@ export interface ListOptions {
   categoryId?: string;
   tag?: string;
   q?: string;
+  submitter?: string;
   page: number;
   pageSize: number;
   sort?: StickerSort;
@@ -55,35 +57,8 @@ export interface ListResult {
 }
 
 export async function listStickersPaginated(opts: ListOptions): Promise<ListResult> {
-  const conditions = [];
-  if (opts.status) conditions.push(eq(stickers.status, opts.status));
-  if (opts.categoryId) {
-    conditions.push(eq(stickers.categoryId, opts.categoryId));
-  } else if (opts.characterId) {
-    const subRows = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(eq(categories.parentId, opts.characterId));
-    const ids = [opts.characterId, ...subRows.map((r) => r.id)];
-    conditions.push(inArray(stickers.categoryId, ids));
-  }
-  if (opts.tag) {
-    conditions.push(sql`${opts.tag} = ANY(${stickers.tags})`);
-  }
-  if (opts.q) {
-    const like = `%${opts.q}%`;
-    conditions.push(
-      or(
-        ilike(stickers.name, like),
-        ilike(stickers.id, like),
-        sql`EXISTS (SELECT 1 FROM unnest(${stickers.tags}) AS tag WHERE tag ILIKE ${like})`,
-      )!,
-    );
-  }
-
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const where = await buildWhere(opts);
   const offset = Math.max(0, (opts.page - 1) * opts.pageSize);
-
   const orderBy = buildOrderBy(opts.sort);
 
   const [items, totalRows] = await Promise.all([
@@ -92,6 +67,7 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
         id: stickers.id,
         name: stickers.name,
         src: stickers.src,
+        previewSrc: stickers.previewSrc,
         width: stickers.width,
         height: stickers.height,
         ext: stickers.ext,
@@ -112,15 +88,68 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       .orderBy(...orderBy)
       .limit(opts.pageSize)
       .offset(offset),
-    db.select({ c: count() }).from(stickers).where(where),
+    db
+      .select({ c: count() })
+      .from(stickers)
+      .leftJoin(categories, eq(stickers.categoryId, categories.id))
+      .leftJoin(parentCategories, eq(categories.parentId, parentCategories.id))
+      .leftJoin(users, eq(stickers.submittedById, users.id))
+      .where(where),
   ]);
 
   const total = Number(totalRows[0]?.c ?? 0);
   const pageCount = Math.max(1, Math.ceil(total / opts.pageSize));
-  return { items, total, page: opts.page, pageSize: opts.pageSize, pageCount };
+  return {
+    items: items.map(requirePreviewSrc),
+    total,
+    page: opts.page,
+    pageSize: opts.pageSize,
+    pageCount,
+  };
 }
 
 const parentCategories = alias(categories, "parent_category");
+
+async function buildWhere(opts: ListOptions) {
+  const conditions: SQL[] = [];
+  if (opts.status) conditions.push(eq(stickers.status, opts.status));
+  await addCategoryCondition(conditions, opts);
+  if (opts.tag) conditions.push(sql`${opts.tag} = ANY(${stickers.tags})`);
+  if (opts.q) conditions.push(buildTextSearchCondition(opts.q));
+  if (opts.submitter) conditions.push(buildSubmitterCondition(opts.submitter));
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+async function addCategoryCondition(conditions: SQL[], opts: ListOptions) {
+  if (opts.categoryId) {
+    conditions.push(eq(stickers.categoryId, opts.categoryId));
+    return;
+  }
+  if (!opts.characterId) return;
+  const subRows = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.parentId, opts.characterId));
+  conditions.push(inArray(stickers.categoryId, [opts.characterId, ...subRows.map((r) => r.id)]));
+}
+
+function buildTextSearchCondition(text: string) {
+  const like = `%${text}%`;
+  return or(
+    ilike(stickers.name, like),
+    ilike(stickers.id, like),
+    sql`EXISTS (SELECT 1 FROM unnest(${stickers.tags}) AS tag WHERE tag ILIKE ${like})`,
+  )!;
+}
+
+function buildSubmitterCondition(text: string) {
+  const like = `%${text}%`;
+  return or(
+    eq(stickers.submittedById, text),
+    ilike(users.githubLogin, like),
+    ilike(users.name, like),
+  )!;
+}
 
 function buildOrderBy(sort: ListOptions["sort"]) {
   if (sort === "oldest") return [asc(stickers.submittedAt)];
@@ -150,4 +179,15 @@ export async function countByStatus(): Promise<Record<StickerStatus, number>> {
     result[r.status] = Number(r.c);
   });
   return result;
+}
+
+type QueriedAdminStickerRow = Omit<AdminStickerRow, "previewSrc"> & {
+  previewSrc: string | null;
+};
+
+function requirePreviewSrc(row: QueriedAdminStickerRow): AdminStickerRow {
+  if (!row.previewSrc) {
+    throw new Error(`贴纸缺少 previewSrc：${row.id}，请先运行 pnpm db:backfill-previews。`);
+  }
+  return { ...row, previewSrc: row.previewSrc };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/heroui-compat";
 
 interface Props {
   /** 可用标签按使用频率降序 */

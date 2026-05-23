@@ -9,6 +9,7 @@ export async function listApprovedStickers(): Promise<Sticker[]> {
       id: stickers.id,
       name: stickers.name,
       src: stickers.src,
+      previewSrc: stickers.previewSrc,
       category: stickers.categoryId,
       tags: stickers.tags,
       ext: stickers.ext,
@@ -16,7 +17,7 @@ export async function listApprovedStickers(): Promise<Sticker[]> {
     .from(stickers)
     .where(eq(stickers.status, "approved"))
     .orderBy(asc(stickers.id));
-  return rows;
+  return rows.map(requirePreviewSrc);
 }
 
 /**
@@ -46,6 +47,7 @@ export async function listApprovedStickersByCharacter(
       id: stickers.id,
       name: stickers.name,
       src: stickers.src,
+      previewSrc: stickers.previewSrc,
       category: stickers.categoryId,
       tags: stickers.tags,
       ext: stickers.ext,
@@ -60,7 +62,7 @@ export async function listApprovedStickersByCharacter(
     ...(c.parentId ? { parentId: c.parentId } : {}),
   }));
 
-  return { stickers: stickerRows, categories: cats };
+  return { stickers: stickerRows.map(requirePreviewSrc), categories: cats };
 }
 
 export async function listCharacterGallery(
@@ -100,6 +102,7 @@ export async function listCharacterGallery(
               'id', s.id,
               'name', s.name,
               'src', s.src,
+              'previewSrc', s."previewSrc",
               'category', s."categoryId",
               'tags', s.tags,
               'ext', s.ext
@@ -118,15 +121,26 @@ export async function listCharacterGallery(
   const cats = row.categories.map(normalizeCategory);
   return {
     character: row.character,
-    stickers: row.stickers,
+    stickers: row.stickers.map(requirePreviewSrc),
     categories: cats,
   };
+}
+
+type QueriedSticker = Omit<Sticker, "previewSrc"> & {
+  previewSrc: string | null;
+};
+
+function requirePreviewSrc(sticker: QueriedSticker): Sticker {
+  if (!sticker.previewSrc) {
+    throw new Error(`贴纸缺少 previewSrc：${sticker.id}，请先运行 pnpm db:backfill-previews。`);
+  }
+  return { ...sticker, previewSrc: sticker.previewSrc };
 }
 
 interface CharacterGalleryRow extends Record<string, unknown> {
   character: { id: string; name: string } | null;
   categories: RawCategory[];
-  stickers: Sticker[];
+  stickers: QueriedSticker[];
 }
 
 interface RawCategory {

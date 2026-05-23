@@ -89,6 +89,7 @@ export const stickers = pgTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     src: text("src").notNull(),
+    previewSrc: text("previewSrc"),
     width: integer("width").notNull(),
     height: integer("height").notNull(),
     ext: stickerExt("ext").notNull(),

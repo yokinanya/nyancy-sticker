@@ -39,6 +39,7 @@ export async function createSubmission(formData: FormData): Promise<void> {
       id: uploaded.hash,
       name,
       src: uploaded.src,
+      previewSrc: uploaded.previewSrc,
       width: uploaded.width,
       height: uploaded.height,
       ext: uploaded.ext,

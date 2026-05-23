@@ -4,6 +4,7 @@ export interface Sticker {
   id: string;
   name: string;
   src: string;
+  previewSrc: string;
   category: string;
   tags: string[];
   ext: StickerExt;

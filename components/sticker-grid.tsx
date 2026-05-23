@@ -12,7 +12,7 @@ const MEDIUM_BREAKPOINT = 768;
 const COMPACT_TARGET_SIZE = 96;
 const MEDIUM_TARGET_SIZE = 120;
 const LARGE_TARGET_SIZE = 150;
-const PRIORITY_COUNT = 12;
+const PRIORITY_COUNT = 6;
 
 interface Props {
   stickers: Sticker[];

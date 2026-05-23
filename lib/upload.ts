@@ -4,12 +4,15 @@ import { db } from "@/lib/db";
 import { categories } from "@/drizzle/schema";
 import { exists, publicUrlFor, upload } from "@/lib/r2";
 import { inspectImage } from "@/lib/image";
-import { stickerKey } from "@/lib/keys";
+import { previewKey, stickerKey } from "@/lib/keys";
+import { generateStickerPreview, previewExtFor } from "@/lib/preview";
 import type { StickerExt } from "@/lib/types";
 
 export interface UploadedSticker {
   src: string;
+  previewSrc: string;
   key: string;
+  previewKey: string;
   hash: string;
   width: number;
   height: number;
@@ -26,17 +29,35 @@ export async function uploadStickerFile(file: File, categoryId: string): Promise
   if (!category) throw new Error(`分类不存在：${categoryId}`);
 
   const info = await inspectImage(file);
-  const key = stickerKey({ id: category.id, parentId: category.parentId }, info.hash, info.ext);
-  const src = (await exists(key)) ? publicUrlFor(key) : await upload(key, info.buffer, info.ext);
+  const ref = { id: category.id, parentId: category.parentId };
+  const key = stickerKey(ref, info.hash, info.ext);
+  const preview = previewKey(ref, info.hash, previewExtFor(info.ext));
+  const [src, previewSrc] = await Promise.all([
+    uploadIfMissing(key, info.buffer, info.ext),
+    uploadPreviewIfMissing(preview, info.buffer, info.ext),
+  ]);
 
   const baseName = file.name.replace(/\.[^./\\]+$/, "");
   return {
     src,
+    previewSrc,
     key,
+    previewKey: preview,
     hash: info.hash,
     width: info.width,
     height: info.height,
     ext: info.ext,
     baseName,
   };
+}
+
+async function uploadIfMissing(key: string, buffer: Buffer, ext: StickerExt) {
+  if (await exists(key)) return publicUrlFor(key);
+  return upload(key, buffer, ext);
+}
+
+async function uploadPreviewIfMissing(key: string, buffer: Buffer, ext: StickerExt) {
+  if (await exists(key)) return publicUrlFor(key);
+  const preview = await generateStickerPreview(buffer, ext);
+  return upload(key, preview.buffer, preview.ext);
 }

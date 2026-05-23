@@ -19,7 +19,7 @@ export async function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-black/5 bg-white/70 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/70">
+    <header className="sticky top-0 z-40 border-b border-border-subtle bg-surface/85 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3">
         <SiteTitle siteName="猫猫冲表情站" characters={characters} />
         <div className="flex items-center gap-3">
@@ -36,19 +36,11 @@ export async function SiteHeader() {
           ) : (
             <Link
               href="/login"
-              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+              className="text-sm text-muted hover:text-foreground"
             >
               登录
             </Link>
           )}
-          <a
-            href="https://github.com/yokinanya/nyancy-sticker"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            GitHub
-          </a>
           <ThemeToggle />
         </div>
       </div>

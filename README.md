@@ -1,6 +1,6 @@
 # 猫猫冲表情站
 
-基于 Next.js 16、HeroUI v3、Cloudflare R2 与 Neon Postgres 的表情包图库。访客浏览，登录用户可投稿，管理员审核后发布。
+基于 Next.js 16、Tailwind v4、本地 Radix/shadcn 风格组件、Cloudflare R2 与 Neon Postgres 的表情包图库。访客浏览，登录用户可投稿，管理员审核后发布。
 
 ## 功能
 
@@ -14,7 +14,7 @@
 ## 技术栈
 
 - Next.js 16（App Router，`--webpack` 模式以兼容 Serwist）
-- HeroUI v3 + Tailwind v4 + React 19
+- Tailwind v4 + 本地 `components/ui` 组件 + Radix primitives + React 19
 - Neon Postgres + Drizzle ORM
 - Auth.js v5（GitHub provider，JWT session）
 - Cloudflare R2（图片存储，S3 SDK 直连）
@@ -40,7 +40,8 @@ cp .env.example .env.local
 ```bash
 pnpm install
 pnpm db:migrate
-pnpm db:seed       # 仅首次：把 docs/archive/stickers.json 灌入数据库
+pnpm db:seed       # 仅首次：把 data/stickers.json 灌入数据库
+pnpm db:backfill-previews # 首次 seed 后生成并上传预览图
 pnpm dev
 ```
 
@@ -60,7 +61,8 @@ pnpm db:generate       # 根据 drizzle/schema.ts 生成 SQL migration
 pnpm db:migrate        # 应用 migration 到数据库
 pnpm db:push           # 直接同步 schema（dev 快速迭代用）
 pnpm db:studio         # Drizzle Studio
-pnpm db:seed           # 一次性：从 docs/archive/stickers.json 灌入历史数据
+pnpm db:seed           # 一次性：从 data/stickers.json 灌入历史数据
+pnpm db:backfill-previews # 为 approved/pending 历史贴纸生成 R2 预览图
 ```
 
 ## 数据模型
@@ -70,9 +72,14 @@ pnpm db:seed           # 一次性：从 docs/archive/stickers.json 灌入历史
 - `user`：Auth.js 标配 + `githubLogin` + `role`(`user`|`admin`) + `createdAt`
 - `account` / `session` / `verificationToken`：Auth.js 标配
 - `category`：一级分类（角色）与二级分类（合集），`parentId` 自引用
-- `sticker`：单表 + `status`(`approved`|`pending`|`rejected`)，含 `submittedById` / `approvedById` / `approvedAt` / `rejectionReason`；`tags` 为 `text[]`（GIN 索引）；`hash` 配合 partial unique index 保证未拒绝行的去重
+- `sticker`：单表 + `status`(`approved`|`pending`|`rejected`)，含 `src` 原图、`previewSrc` 预览图、`submittedById` / `approvedById` / `approvedAt` / `rejectionReason`；`tags` 为 `text[]`（GIN 索引）；`hash` 配合 partial unique index 保证未拒绝行的去重
 
-R2 key 规则：`stickers/<一级分类id>/<二级分类id>/<hash>.<ext>`。
+R2 key 规则：
+- 原图：`stickers/<一级分类id>/<二级分类id>/<hash>.<ext>`
+- 静态图预览：`previews/<一级分类id>/<二级分类id>/<hash>-240.webp`
+- GIF 预览：`previews/<一级分类id>/<二级分类id>/<hash>-160.gif`
+
+生产上传链路会同时写入原图和预览图；历史数据在首次 seed 后必须运行 `pnpm db:backfill-previews`，否则画廊查询会显式报错提示缺少 `previewSrc`。
 
 ## 部署
 

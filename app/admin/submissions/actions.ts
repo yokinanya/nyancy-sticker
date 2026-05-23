@@ -55,14 +55,7 @@ export async function rejectSubmission(formData: FormData): Promise<void> {
   });
   if (!sticker) throw new Error("投稿不存在或已被处理。");
 
-  const key = keyFromUrl(sticker.src);
-  if (key) {
-    try {
-      await remove(key);
-    } catch (err) {
-      console.error("R2 对象删除失败，仍标记 rejected：", err);
-    }
-  }
+  await removeStickerObjects(sticker.src, sticker.previewSrc);
 
   await db
     .update(stickers)
@@ -70,6 +63,13 @@ export async function rejectSubmission(formData: FormData): Promise<void> {
     .where(eq(stickers.id, id));
 
   revalidatePath("/admin");
+}
+
+async function removeStickerObjects(src: string, previewSrc: string | null): Promise<void> {
+  const keys = [keyFromUrl(src), previewSrc ? keyFromUrl(previewSrc) : null].filter(
+    (key): key is string => Boolean(key),
+  );
+  await Promise.all(keys.map((key) => remove(key)));
 }
 
 function readText(formData: FormData, key: string): string {

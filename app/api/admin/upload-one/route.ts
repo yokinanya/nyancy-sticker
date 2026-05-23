@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         id: uploaded.hash,
         name,
         src: uploaded.src,
+        previewSrc: uploaded.previewSrc,
         width: uploaded.width,
         height: uploaded.height,
         ext: uploaded.ext,

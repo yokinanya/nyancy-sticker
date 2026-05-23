@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "@heroui/react";
+import { Button, Input } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
 import type { Category } from "@/lib/types";
 import { CategorySelect } from "@/app/admin/category-select";
@@ -13,6 +13,7 @@ interface Submission {
   id: string;
   name: string;
   src: string;
+  previewSrc: string;
   width: number;
   height: number;
   categoryId: string;
@@ -109,7 +110,7 @@ function SubmissionCard({
       <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
       <div className="flex-shrink-0">
         <Image
-          src={submission.src}
+          src={submission.previewSrc}
           alt={submission.name}
           width={submission.width}
           height={submission.height}

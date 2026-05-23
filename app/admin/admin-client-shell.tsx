@@ -3,22 +3,36 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Tabs } from "@heroui/react";
+import { Tabs } from "@/components/ui/heroui-compat";
 import type { AdminTab } from "./admin-tabs";
 
 const BASE_TABS = [
   { key: "submissions", title: "投稿审核" },
   { key: "stickers", title: "贴纸" },
   { key: "categories", title: "分类" },
-  { key: "tags", title: "标签" },
   { key: "upload", title: "上传" },
 ] as const;
 
 const USERS_TAB = { key: "users", title: "用户" } as const;
-const scrollableTabListClass =
-  "flex! w-full max-w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
-const tabClass =
-  "motion-press ui-selected-tab w-auto! flex-[1_0_max-content]! whitespace-nowrap rounded-lg px-3 py-2";
+const TAB_LIST_CLASS = "admin-tab-list";
+const TAB_CLASS = "admin-tab ui-focus";
+
+type AdminTabItem = (typeof BASE_TABS)[number] | typeof USERS_TAB;
+
+function AdminTabButton({ item, pendingCount }: { item: AdminTabItem; pendingCount: number }) {
+  const shouldShowPendingBadge = item.key === "submissions" && pendingCount > 0;
+
+  return (
+    <Tabs.Tab key={item.key} id={item.key} className={TAB_CLASS}>
+      <span className="admin-tab-label">{item.title}</span>
+      {shouldShowPendingBadge ? (
+        <span className="admin-tab-badge" aria-label={`${pendingCount} 条待审核投稿`}>
+          {pendingCount}
+        </span>
+      ) : null}
+    </Tabs.Tab>
+  );
+}
 
 interface Props {
   initialTab: AdminTab;
@@ -46,13 +60,9 @@ export function AdminClientShell({ initialTab, pendingCount, isAdmin, panel }: P
           selectedKey={selectedTab}
           onSelectionChange={(key) => selectTab(String(key) as AdminTab)}
         >
-          <Tabs.List aria-label="后台管理" className={scrollableTabListClass}>
+          <Tabs.List aria-label="后台管理" className={TAB_LIST_CLASS}>
             {tabs.map((item) => (
-              <Tabs.Tab key={item.key} id={item.key} className={tabClass}>
-                {item.key === "submissions" && pendingCount > 0
-                  ? `${item.title} · ${pendingCount}`
-                  : item.title}
-              </Tabs.Tab>
+              <AdminTabButton key={item.key} item={item} pendingCount={pendingCount} />
             ))}
           </Tabs.List>
         </Tabs>

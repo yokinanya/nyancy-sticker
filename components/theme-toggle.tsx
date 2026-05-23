@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/heroui-compat";
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {

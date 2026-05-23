@@ -26,7 +26,7 @@ export default async function CharacterGalleryPage({ params }: PageProps) {
   if (!character) notFound();
 
   return (
-    <div className="motion-page mx-auto flex w-full max-w-7xl flex-col px-4 py-6">
+    <div className="motion-page page-shell flex max-w-7xl flex-col">
       <StickerGallery
         characterId={character.id}
         manifest={{ categories, stickers }}

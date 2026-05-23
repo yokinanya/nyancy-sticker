@@ -6,7 +6,6 @@ import { AdminClientShell } from "./admin-client-shell";
 import { SubmissionsPanel } from "./panels/submissions-panel";
 import { StickersPanel } from "./panels/stickers-panel";
 import { CategoriesPanel } from "./panels/categories-panel";
-import { TagsPanel } from "./panels/tags-panel";
 import { UploadFormPanel } from "./panels/upload-form-panel";
 import { UsersPanel } from "./panels/users-panel";
 
@@ -18,7 +17,6 @@ const BASE_TABS: readonly AdminTab[] = [
   "submissions",
   "stickers",
   "categories",
-  "tags",
   "upload",
 ];
 
@@ -55,7 +53,6 @@ function renderPanel(tab: AdminTab, searchParams: Record<string, string | string
   if (tab === "submissions") return <SubmissionsPanel />;
   if (tab === "stickers") return <StickersPanel searchParams={searchParams} />;
   if (tab === "categories") return <CategoriesPanel />;
-  if (tab === "tags") return <TagsPanel />;
   if (tab === "upload") return <UploadFormPanel />;
   return <UsersPanel searchParams={searchParams} />;
 }
@@ -91,7 +88,6 @@ function panelLoadingLabel(tab: AdminTab) {
     submissions: "正在加载投稿审核...",
     stickers: "正在加载贴纸列表...",
     categories: "正在加载分类...",
-    tags: "正在加载标签...",
     upload: "正在加载上传面板...",
     users: "正在加载用户列表...",
   };

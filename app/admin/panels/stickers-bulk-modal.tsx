@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input, Modal, Tag, TagGroup } from "@heroui/react";
+import { Button, Input, Modal, Tag, TagGroup } from "@/components/ui/heroui-compat";
 import { CategorySelect } from "@/app/admin/category-select";
 import type { Category } from "@/lib/types";
 

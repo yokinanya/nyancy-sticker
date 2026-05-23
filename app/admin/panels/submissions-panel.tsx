@@ -11,6 +11,7 @@ export async function SubmissionsPanel() {
         id: stickers.id,
         name: stickers.name,
         src: stickers.src,
+        previewSrc: stickers.previewSrc,
         width: stickers.width,
         height: stickers.height,
         ext: stickers.ext,
@@ -36,5 +37,19 @@ export async function SubmissionsPanel() {
     );
   }
 
-  return <SubmissionList submissions={pending} categories={categories} />;
+  return <SubmissionList submissions={pending.map(requirePreviewSrc)} categories={categories} />;
+}
+
+type PendingSubmission = {
+  id: string;
+  previewSrc: string | null;
+};
+
+function requirePreviewSrc<T extends PendingSubmission>(
+  submission: T,
+): Omit<T, "previewSrc"> & { previewSrc: string } {
+  if (!submission.previewSrc) {
+    throw new Error(`投稿缺少 previewSrc：${submission.id}，请先运行 pnpm db:backfill-previews。`);
+  }
+  return { ...submission, previewSrc: submission.previewSrc };
 }
