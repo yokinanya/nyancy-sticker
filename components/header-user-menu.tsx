@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@heroui/react";
@@ -35,12 +36,14 @@ export function HeaderUserMenu({ user, logoutAction }: Props) {
         className="motion-interactive ui-focus flex items-center gap-2 rounded-full border border-default-200 px-2 py-1 text-sm transition hover:bg-default-100"
       >
         {user.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={user.image}
             alt={user.name}
+            width={24}
+            height={24}
             className="h-6 w-6 rounded-full"
             referrerPolicy="no-referrer"
+            unoptimized
           />
         ) : (
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-default-200 text-xs">

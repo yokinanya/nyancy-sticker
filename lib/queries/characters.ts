@@ -1,5 +1,9 @@
 import { sql } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
+import { CATEGORY_TREE_CACHE_TAG } from "./categories";
+
+export const CHARACTER_LIST_CACHE_TAG = "character-list";
 
 export interface CharacterSummary {
   id: string;
@@ -25,6 +29,12 @@ export async function listCharactersWithCounts(): Promise<CharacterSummary[]> {
   `);
   return result.rows.map((r) => ({ id: r.id, name: r.name, count: Number(r.count) }));
 }
+
+export const listCachedCharactersWithCounts = unstable_cache(
+  listCharactersWithCounts,
+  ["character-list-with-counts"],
+  { tags: [CHARACTER_LIST_CACHE_TAG, CATEGORY_TREE_CACHE_TAG] },
+);
 
 export async function findCharacter(id: string): Promise<{ id: string; name: string } | null> {
   const result = await db.execute<{ id: string; name: string }>(sql`

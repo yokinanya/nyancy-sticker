@@ -12,6 +12,7 @@ const MEDIUM_BREAKPOINT = 768;
 const COMPACT_TARGET_SIZE = 96;
 const MEDIUM_TARGET_SIZE = 120;
 const LARGE_TARGET_SIZE = 150;
+const PRIORITY_COUNT = 12;
 
 interface Props {
   stickers: Sticker[];
@@ -122,8 +123,13 @@ function VirtualRows({
           paddingBottom: GRID_GAP,
         }}
       >
-        {rowItems.map((sticker) => (
-          <StickerCard key={sticker.id} sticker={sticker} onOpen={onOpen} />
+        {rowItems.map((sticker, colIdx) => (
+          <StickerCard
+            key={sticker.id}
+            sticker={sticker}
+            onOpen={onOpen}
+            priority={start + colIdx < PRIORITY_COUNT}
+          />
         ))}
       </div>
     );

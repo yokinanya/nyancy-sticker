@@ -9,12 +9,9 @@ export async function listApprovedStickers(): Promise<Sticker[]> {
       id: stickers.id,
       name: stickers.name,
       src: stickers.src,
-      width: stickers.width,
-      height: stickers.height,
       category: stickers.categoryId,
       tags: stickers.tags,
       ext: stickers.ext,
-      hash: stickers.hash,
     })
     .from(stickers)
     .where(eq(stickers.status, "approved"))
@@ -49,12 +46,9 @@ export async function listApprovedStickersByCharacter(
       id: stickers.id,
       name: stickers.name,
       src: stickers.src,
-      width: stickers.width,
-      height: stickers.height,
       category: stickers.categoryId,
       tags: stickers.tags,
       ext: stickers.ext,
-      hash: stickers.hash,
     })
     .from(stickers)
     .where(and(eq(stickers.status, "approved"), inArray(stickers.categoryId, categoryIds)))
@@ -106,12 +100,9 @@ export async function listCharacterGallery(
               'id', s.id,
               'name', s.name,
               'src', s.src,
-              'width', s.width,
-              'height', s.height,
               'category', s."categoryId",
               'tags', s.tags,
-              'ext', s.ext,
-              'hash', s.hash
+              'ext', s.ext
             )
             ORDER BY s.id ASC
           )

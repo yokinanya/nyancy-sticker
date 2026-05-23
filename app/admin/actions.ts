@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
+import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
 import { uploadStickerFile } from "@/lib/upload";
 
 export async function bulkUpdateStickers(formData: FormData): Promise<void> {
@@ -217,6 +218,7 @@ function splitTags(value: string): string[] {
 
 function revalidateAdminPages() {
   revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
+  revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
   revalidatePath("/admin");
   revalidatePath("/");
 }

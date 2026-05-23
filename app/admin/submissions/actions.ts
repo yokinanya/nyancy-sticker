@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
+import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
 import { keyFromUrl, remove } from "@/lib/r2";
 
 export async function approveSubmission(formData: FormData): Promise<void> {
@@ -37,6 +38,7 @@ export async function approveSubmission(formData: FormData): Promise<void> {
 
   if (result.length === 0) throw new Error("投稿不存在或已被处理。");
 
+  revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
   revalidatePath("/");
   revalidatePath("/admin");
 }

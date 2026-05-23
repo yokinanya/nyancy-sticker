@@ -7,9 +7,11 @@ import type { Sticker } from "@/lib/types";
 interface Props {
   sticker: Sticker;
   onOpen: (s: Sticker) => void;
+  priority?: boolean;
 }
 
-function StickerCardComponent({ sticker, onOpen }: Props) {
+function StickerCardComponent({ sticker, onOpen, priority }: Props) {
+  const isGif = sticker.ext === "gif";
   return (
     <button
       type="button"
@@ -18,12 +20,15 @@ function StickerCardComponent({ sticker, onOpen }: Props) {
       aria-label={`查看 ${sticker.name}`}
     >
       <Image
-        src={sticker.thumb || sticker.src}
+        src={sticker.src}
         alt={sticker.name}
         fill
         sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 160px"
         className="object-contain p-2 transition duration-200 ease-out group-hover:scale-105"
-        unoptimized={sticker.ext === "gif"}
+        unoptimized={isGif}
+        loading={isGif && !priority ? "lazy" : undefined}
+        priority={priority}
+        fetchPriority={priority ? "high" : "auto"}
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-xs text-white transition duration-200 ease-out group-hover:translate-y-0">
         <div className="truncate font-medium">{sticker.name}</div>

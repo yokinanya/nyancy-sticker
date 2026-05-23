@@ -30,6 +30,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+const R2_PUBLIC_HOST = process.env.NEXT_PUBLIC_R2_HOST ?? "s3.yokina.moe";
+
 export default async function RootLayout({
   children,
 }: {
@@ -40,6 +42,14 @@ export default async function RootLayout({
 
   return (
     <html lang={lang} suppressHydrationWarning>
+      <head>
+        <link
+          rel="preconnect"
+          href={`https://${R2_PUBLIC_HOST}`}
+          crossOrigin=""
+        />
+        <link rel="dns-prefetch" href={`https://${R2_PUBLIC_HOST}`} />
+      </head>
       <body>
         <Providers lang={lang}>
           <div className="flex min-h-dvh flex-col">

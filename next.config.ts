@@ -20,10 +20,13 @@ const r2PublicHost = process.env.NEXT_PUBLIC_R2_HOST ?? DEFAULT_R2_PUBLIC_HOST;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  compress: true,
+  poweredByHeader: false,
   experimental: {
     serverActions: {
       bodySizeLimit: serverActionBodySizeLimit,
     },
+    optimizePackageImports: ["@heroui/react"],
   },
   images: {
     remotePatterns: [
@@ -32,6 +35,34 @@ const nextConfig: NextConfig = {
         hostname: r2PublicHost,
       },
     ],
+    minimumCacheTTL: 31536000,
+    formats: ["image/webp"],
+  },
+  async headers() {
+    return [
+      {
+        source: "/manifest.webmanifest",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
+      },
+      {
+        source: "/icon.png",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=2592000, immutable" },
+        ],
+      },
+      {
+        source: "/apple-icon.png",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=2592000, immutable" },
+        ],
+      },
+      {
+        source: "/miya_logo.png",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=2592000, immutable" },
+        ],
+      },
+    ];
   },
 };
 
