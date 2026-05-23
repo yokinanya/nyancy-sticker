@@ -5,6 +5,8 @@ export interface Sticker {
   name: string;
   src: string;
   previewSrc: string;
+  width: number;
+  height: number;
   category: string;
   tags: string[];
   ext: StickerExt;

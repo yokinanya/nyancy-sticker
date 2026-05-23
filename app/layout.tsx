@@ -51,8 +51,9 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href={`https://${R2_PUBLIC_HOST}`} />
       </head>
       <body>
+        <div id="web_bg" aria-hidden="true" />
         <Providers lang={lang}>
-          <div className="flex min-h-dvh flex-col">
+          <div className="relative z-10 flex min-h-dvh flex-col">
             <SiteHeader />
             <main className="app-shell flex-1">
               {children}

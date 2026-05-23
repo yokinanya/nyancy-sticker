@@ -67,7 +67,11 @@ export function HeaderUserMenu({ user, logoutAction }: Props) {
             <MenuLink href="/admin" label="后台管理" onClick={() => setOpen(false)} />
           ) : null}
           <form action={logoutAction}>
-            <Button type="submit" variant="ghost" className="motion-interactive w-full justify-start">
+            <Button
+              type="submit"
+              variant="ghost"
+              className="motion-interactive mt-1 w-full justify-start border-danger/20 bg-danger/8 text-danger hover:border-danger/35 hover:bg-danger/12"
+            >
               登出
             </Button>
           </form>

@@ -15,7 +15,7 @@ function StickerCardComponent({ sticker, onOpen, priority }: Props) {
     <button
       type="button"
       onClick={() => onOpen(sticker)}
-      className="motion-press ui-focus group relative aspect-square w-full overflow-hidden rounded-lg border border-border-subtle bg-surface-raised shadow-sm hover:border-accent/60 hover:shadow-md"
+      className="motion-press ui-focus sticker-tray group relative aspect-square w-full overflow-hidden rounded-lg border border-border-subtle hover:border-accent/60"
       aria-label={`查看 ${sticker.name}`}
     >
       <span className="absolute inset-1 rounded-md bg-surface-muted/80" aria-hidden="true" />

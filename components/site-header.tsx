@@ -19,7 +19,7 @@ export async function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border-subtle bg-surface/85 backdrop-blur-md">
+    <header className="liquid-header sticky top-0 z-40 border-b border-border-subtle">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3">
         <SiteTitle siteName="猫猫冲表情站" characters={characters} />
         <div className="flex items-center gap-3">

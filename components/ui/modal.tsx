@@ -43,6 +43,9 @@ export const Modal = Object.assign(({ children }: { children: ReactNode }) => <>
   Heading({ className, ...props }: Dialog.DialogTitleProps) {
     return <Dialog.Title className={cn("text-base font-semibold", className)} {...props} />;
   },
+  Description({ className, ...props }: Dialog.DialogDescriptionProps) {
+    return <Dialog.Description className={cn("text-sm text-muted", className)} {...props} />;
+  },
   Body({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     return <div className={cn("px-4 py-4 sm:px-6", className)} {...props} />;
   },

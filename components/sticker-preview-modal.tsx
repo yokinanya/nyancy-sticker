@@ -71,7 +71,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
     <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
         <Modal.Container>
-          <Modal.Dialog className="motion-panel modal-surface w-full max-w-lg">
+          <Modal.Dialog className="motion-panel modal-surface sticker-modal-surface w-full max-w-lg">
             <Modal.CloseTrigger className="motion-press absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
               <span aria-hidden="true">
                 ×
@@ -79,6 +79,9 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
             </Modal.CloseTrigger>
             <Modal.Header>
               <Modal.Heading>{sticker.name}</Modal.Heading>
+              <Modal.Description className="sr-only">
+                预览贴纸图片，并提供分类、ID、尺寸、标签、复制和下载操作。
+              </Modal.Description>
             </Modal.Header>
             <Modal.Body>
               <div className="flex flex-col items-center gap-4">
@@ -99,6 +102,9 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   </span>
                   <span className="rounded-full border border-border-subtle bg-surface-muted px-2 py-0.5 font-mono text-muted">
                     ID: {sticker.id}
+                  </span>
+                  <span className="rounded-full border border-border-subtle bg-surface-muted px-2 py-0.5 font-mono text-muted">
+                    {formatDimensions(sticker.width, sticker.height)}
                   </span>
                   {sticker.tags.map((t) => (
                     <span
@@ -148,4 +154,8 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
       </Modal.Backdrop>
     </Modal>
   );
+}
+
+function formatDimensions(width: number, height: number) {
+  return `${width}×${height}`;
 }

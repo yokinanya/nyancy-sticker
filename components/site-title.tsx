@@ -25,8 +25,8 @@ export function SiteTitle({ siteName, characters }: Props) {
       <span className="font-semibold tracking-tight">{siteName}</span>
       {character ? (
         <>
-          <span className="text-default-400">·</span>
-          <span className="text-default-700 dark:text-default-300">{character.name}</span>
+          <span className="text-muted">·</span>
+          <span className="font-medium text-primary dark:text-default-700">{character.name}</span>
         </>
       ) : null}
     </Link>
