@@ -78,18 +78,23 @@ export async function uploadStickers(formData: FormData): Promise<void> {
 }
 
 export async function updateSticker(formData: FormData): Promise<void> {
-  await requireEditor();
+  const session = await requireEditor();
   const id = readText(formData, "id");
   const category = readText(formData, "editCategory");
   await ensureSubcategoryExists(category);
   const name = readText(formData, "editName");
+  const status = readStickerStatus(formData);
   const tagsValue = formData.get("editTags");
   const tags =
     typeof tagsValue === "string" && tagsValue.trim() ? splitTags(tagsValue) : [];
+  const approvalFields =
+    status === "approved"
+      ? { approvedById: session.user.id, approvedAt: new Date(), rejectionReason: null }
+      : { approvedById: null, approvedAt: null, rejectionReason: null };
 
   await db
     .update(stickers)
-    .set({ name, categoryId: category, tags })
+    .set({ name, categoryId: category, tags, status, ...approvalFields })
     .where(eq(stickers.id, id));
   revalidateAdminPages();
 }
@@ -175,6 +180,12 @@ function readText(formData: FormData, key: string): string {
     throw new Error(`缺少字段：${key}`);
   }
   return value.trim();
+}
+
+function readStickerStatus(formData: FormData): "approved" | "pending" | "rejected" {
+  const status = readText(formData, "editStatus");
+  if (status === "approved" || status === "pending" || status === "rejected") return status;
+  throw new Error(`无效状态：${status}`);
 }
 
 async function readParentId(formData: FormData, id: string): Promise<string | undefined> {

@@ -218,8 +218,8 @@ export function BatchUploadForm({
   return (
     <div className="flex flex-col gap-4">
       <section className="admin-panel flex flex-col gap-3 p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-          <Field label="角色">
+        <div className="grid gap-3 grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+          <Field label="角色" className="col-span-2 md:col-span-1">
             <PlainSelect
               ariaLabel="角色"
               value={character}
@@ -248,7 +248,7 @@ export function BatchUploadForm({
             variant="ghost"
             isDisabled={!character || !allowCreateSubcategory}
             onPress={() => setCreateOpen(true)}
-            className="md:min-w-24"
+            className="self-end md:min-w-24"
           >
             + 新建
           </Button>
@@ -344,9 +344,9 @@ export function BatchUploadForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className={`flex flex-col gap-1${className ? ` ${className}` : ""}`}>
       <label className="text-xs text-default-500">{label}</label>
       {children}
     </div>

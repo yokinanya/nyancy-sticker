@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs } from "@heroui/react";
 import type { AdminTab } from "./admin-tabs";
 
@@ -23,30 +24,18 @@ interface Props {
   initialTab: AdminTab;
   pendingCount: number;
   isAdmin: boolean;
-  panels: Partial<Record<AdminTab, ReactNode>>;
+  panel: ReactNode;
 }
 
-export function AdminClientShell({ initialTab, pendingCount, isAdmin, panels }: Props) {
+export function AdminClientShell({ initialTab, pendingCount, isAdmin, panel }: Props) {
+  const router = useRouter();
   const [selectedTab, setSelectedTab] = useState(initialTab);
   const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, USERS_TAB] : BASE_TABS), [isAdmin]);
-
-  useEffect(() => {
-    setSelectedTab(initialTab);
-  }, [initialTab]);
-
-  useEffect(() => {
-    const syncFromUrl = () => {
-      const nextTab = new URLSearchParams(window.location.search).get("tab");
-      if (isAdminTab(nextTab, isAdmin)) setSelectedTab(nextTab);
-    };
-    window.addEventListener("popstate", syncFromUrl);
-    return () => window.removeEventListener("popstate", syncFromUrl);
-  }, [isAdmin]);
 
   const selectTab = (nextTab: AdminTab) => {
     if (nextTab === selectedTab) return;
     setSelectedTab(nextTab);
-    window.history.pushState(null, "", `/admin?tab=${nextTab}`);
+    router.push(`/admin?tab=${nextTab}`);
   };
 
   return (
@@ -70,18 +59,8 @@ export function AdminClientShell({ initialTab, pendingCount, isAdmin, panels }: 
       </div>
 
       <section className="min-w-0">
-        {tabs.map((item) => (
-          <div key={item.key} hidden={selectedTab !== item.key}>
-            {panels[item.key]}
-          </div>
-        ))}
+        {panel}
       </section>
     </>
   );
-}
-
-function isAdminTab(value: string | null, isAdmin: boolean): value is AdminTab {
-  if (!value) return false;
-  if (value === "users" && !isAdmin) return false;
-  return BASE_TABS.some((item) => item.key === value) || value === "users";
 }

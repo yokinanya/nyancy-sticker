@@ -30,8 +30,21 @@ export interface ListOptions {
   q?: string;
   page: number;
   pageSize: number;
-  sort?: "grouped" | "newest" | "oldest" | "name";
+  sort?: StickerSort;
 }
+
+export type StickerSort =
+  | "grouped"
+  | "newest"
+  | "oldest"
+  | "name"
+  | "name-desc"
+  | "category"
+  | "category-desc"
+  | "status"
+  | "status-desc"
+  | "submitter"
+  | "submitter-desc";
 
 export interface ListResult {
   items: AdminStickerRow[];
@@ -59,7 +72,13 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
   }
   if (opts.q) {
     const like = `%${opts.q}%`;
-    conditions.push(or(ilike(stickers.name, like), ilike(stickers.id, like))!);
+    conditions.push(
+      or(
+        ilike(stickers.name, like),
+        ilike(stickers.id, like),
+        sql`EXISTS (SELECT 1 FROM unnest(${stickers.tags}) AS tag WHERE tag ILIKE ${like})`,
+      )!,
+    );
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -106,6 +125,13 @@ const parentCategories = alias(categories, "parent_category");
 function buildOrderBy(sort: ListOptions["sort"]) {
   if (sort === "oldest") return [asc(stickers.submittedAt)];
   if (sort === "name") return [asc(stickers.name)];
+  if (sort === "name-desc") return [desc(stickers.name)];
+  if (sort === "category") return [asc(stickers.categoryId), desc(stickers.submittedAt)];
+  if (sort === "category-desc") return [desc(stickers.categoryId), desc(stickers.submittedAt)];
+  if (sort === "status") return [asc(stickers.status), desc(stickers.submittedAt)];
+  if (sort === "status-desc") return [desc(stickers.status), desc(stickers.submittedAt)];
+  if (sort === "submitter") return [asc(users.githubLogin), asc(users.name)];
+  if (sort === "submitter-desc") return [desc(users.githubLogin), desc(users.name)];
   if (sort === "newest") return [desc(stickers.submittedAt)];
   return [
     asc(sql`COALESCE(${parentCategories.id}, ${categories.id})`),

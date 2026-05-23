@@ -1,12 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useTransition } from "react";
-import { Button, Input, ListBox, Modal, Select } from "@heroui/react";
+import { useMemo, useState, useTransition } from "react";
+import { Autocomplete, Button, Input, ListBox, Modal, Select } from "@heroui/react";
 import { updateSticker } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
-import type { AdminStickerRow } from "@/lib/queries/admin-stickers";
+import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
 import type { Category } from "@/lib/types";
+
+const STATUS_OPTIONS: readonly { value: StickerStatus; label: string }[] = [
+  { value: "approved", label: "已发布" },
+  { value: "pending", label: "待审核" },
+  { value: "rejected", label: "已拒绝" },
+];
 
 interface StickerEditModalProps {
   sticker: AdminStickerRow;
@@ -31,6 +37,7 @@ export function StickerEditModal({
   const [character, setCharacter] = useState(initialCharacter);
   const [subCategory, setSubCategory] = useState(initialSub);
   const [tags, setTags] = useState(sticker.tags.join(", "));
+  const [status, setStatus] = useState<StickerStatus>(sticker.status);
   const [error, setError] = useState<string | null>(null);
 
   const topLevels = categories.filter((c) => !c.parentId);
@@ -47,6 +54,7 @@ export function StickerEditModal({
     fd.set("editName", name);
     fd.set("editCategory", subCategory);
     fd.set("editTags", tags);
+    fd.set("editStatus", status);
     startTransition(async () => {
       try {
         await updateSticker(fd);
@@ -81,6 +89,7 @@ export function StickerEditModal({
                   character,
                   subCategory,
                   tags,
+                  status,
                   error,
                   topLevels,
                   subCategories,
@@ -90,6 +99,7 @@ export function StickerEditModal({
                   setCharacter,
                   setSubCategory,
                   setTags,
+                  setStatus,
                 }}
               />
             </Modal.Body>
@@ -117,6 +127,7 @@ interface StickerEditFieldsProps {
     character: string;
     subCategory: string;
     tags: string;
+    status: StickerStatus;
     error: string | null;
     topLevels: readonly Category[];
     subCategories: readonly Category[];
@@ -126,6 +137,7 @@ interface StickerEditFieldsProps {
     setCharacter: (value: string) => void;
     setSubCategory: (value: string) => void;
     setTags: (value: string) => void;
+    setStatus: (value: StickerStatus) => void;
   };
 }
 
@@ -149,7 +161,7 @@ function StickerEditFields({ state, actions }: StickerEditFieldsProps) {
         />
       </Field>
       <Field label="角色">
-        <RoleSelect
+        <OptionAutocomplete
           options={state.topLevels.map((c) => ({ value: c.id, label: c.name }))}
           value={state.character}
           onChange={(value) => {
@@ -159,7 +171,7 @@ function StickerEditFields({ state, actions }: StickerEditFieldsProps) {
         />
       </Field>
       <Field label="子分类">
-        <RoleSelect
+        <OptionAutocomplete
           options={subCategoryOptions}
           value={state.subCategory || "__placeholder"}
           onChange={(value) => actions.setSubCategory(value === "__placeholder" ? "" : value)}
@@ -170,6 +182,13 @@ function StickerEditFields({ state, actions }: StickerEditFieldsProps) {
           value={state.tags}
           onChange={(e) => actions.setTags(e.target.value)}
           className="field-control modal-field bg-content1 px-3"
+        />
+      </Field>
+      <Field label="状态">
+        <RoleSelect
+          options={STATUS_OPTIONS}
+          value={state.status}
+          onChange={(value) => actions.setStatus(value as StickerStatus)}
         />
       </Field>
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
@@ -189,6 +208,63 @@ function StickerPreview({ sticker }: { sticker: AdminStickerRow }) {
         unoptimized={sticker.ext === "gif"}
       />
     </div>
+  );
+}
+
+function OptionAutocomplete({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filteredOptions = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    if (!text) return options;
+    return options.filter((option) => {
+      return option.label.toLowerCase().includes(text) || option.value.toLowerCase().includes(text);
+    });
+  }, [options, query]);
+
+  return (
+    <Autocomplete
+      aria-label="选择"
+      selectedKey={value}
+      onSelectionChange={(key) => onChange(key === null ? "" : String(key))}
+    >
+      <Autocomplete.Trigger className="field-trigger modal-field bg-content1">
+        <Autocomplete.Value />
+        <Autocomplete.ClearButton />
+      </Autocomplete.Trigger>
+      <Autocomplete.Popover className="motion-popover popover-surface min-w-72 p-2">
+        <div className="sticky top-0 z-10 bg-content1 pb-2">
+          <Input
+            autoFocus
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜索..."
+            className="field-control"
+          />
+        </div>
+        <Autocomplete.Filter>
+          <ListBox>
+            {filteredOptions.map((o) => (
+              <ListBox.Item
+                key={o.value}
+                id={o.value}
+                textValue={o.label}
+                className="listbox-option"
+              >
+                {o.label}
+              </ListBox.Item>
+            ))}
+          </ListBox>
+        </Autocomplete.Filter>
+      </Autocomplete.Popover>
+    </Autocomplete>
   );
 }
 

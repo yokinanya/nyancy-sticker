@@ -50,17 +50,27 @@ function SubmissionCard({
   const router = useRouter();
   const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
-  const [category, setCategory] = useState(submission.categoryId);
+  const initialCategory = categories.find((item) => item.id === submission.categoryId);
+  const initialCharacter = initialCategory?.parentId ?? submission.categoryId;
+  const initialSubCategory = initialCategory?.parentId ? submission.categoryId : "";
+  const [character, setCharacter] = useState(initialCharacter);
+  const [subCategory, setSubCategory] = useState(initialSubCategory);
   const [name, setName] = useState(submission.name);
   const [tags, setTags] = useState(submission.tags.join(", "));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const topLevels = categories.filter((item) => !item.parentId);
+  const subCategories = categories.filter((item) => item.parentId === character);
 
   const onApprove = () => {
     setError(null);
+    if (!subCategory) {
+      setError("请选择子分类。");
+      return;
+    }
     const fd = new FormData();
     fd.set("id", submission.id);
-    fd.set("category", category);
+    fd.set("category", subCategory);
     fd.set("name", name);
     fd.set("tags", tags);
     startTransition(async () => {
@@ -122,9 +132,26 @@ function SubmissionCard({
           <label className="text-xs text-default-500">名字</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} className="field-control" />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-default-500">分类</label>
-          <CategorySelect categories={categories} value={category} onChange={setCategory} />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-default-500">角色</label>
+            <CategorySelect
+              categories={topLevels}
+              value={character}
+              onChange={(value) => {
+                setCharacter(value);
+                setSubCategory("");
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-default-500">子分类</label>
+            <CategorySelect
+              categories={subCategories}
+              value={subCategory}
+              onChange={setSubCategory}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-default-500">标签（逗号分隔）</label>

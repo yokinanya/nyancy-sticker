@@ -61,7 +61,6 @@ function DetailHeader({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="admin-section-title">{category.name}</h2>
-            <span className="font-mono text-xs text-default-400">{category.id}</span>
             <Chip size="sm" variant="soft">
               <Chip.Label>{childCount} 个子分类</Chip.Label>
             </Chip>

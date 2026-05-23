@@ -2,36 +2,19 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { memo, useCallback, useMemo, useState, useTransition } from "react";
-import { Button, Checkbox, Chip, Input } from "@heroui/react";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { Button, Checkbox, Chip } from "@heroui/react";
 import type { Category } from "@/lib/types";
-import { CategorySelect } from "@/app/admin/category-select";
 import { bulkUpdateStickers } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
-import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
+import type { AdminStickerRow, StickerSort } from "@/lib/queries/admin-stickers";
+import { StickersBulkModal } from "./stickers-bulk-modal";
 import { StickerEditModal } from "./sticker-edit-modal";
+import { PageSizeSelect, SortableHeader, StickerMobileCard, StatusChip } from "./stickers-table-parts";
 
-const STATUS_LABEL: Record<StickerStatus, string> = {
-  approved: "已发布",
-  pending: "待审核",
-  rejected: "已拒绝",
-};
+interface Props { items: readonly AdminStickerRow[]; categories: readonly Category[]; page: number; pageCount: number; pageSize: number; sort: StickerSort; total: number; }
 
-const STATUS_COLOR: Record<StickerStatus, "primary" | "secondary" | "soft"> = {
-  approved: "primary",
-  pending: "secondary",
-  rejected: "soft",
-};
-
-interface Props {
-  items: readonly AdminStickerRow[];
-  categories: readonly Category[];
-  page: number;
-  pageCount: number;
-  total: number;
-}
-
-export function StickersTable({ items, categories, page, pageCount, total }: Props) {
+export function StickersTable({ items, categories, page, pageCount, pageSize, sort, total }: Props) {
   const router = useRouter();
   const feedback = useFeedback();
   const searchParams = useSearchParams();
@@ -39,19 +22,17 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
   const [selected, setSelected] = useState<readonly string[]>([]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const [editing, setEditing] = useState<AdminStickerRow | null>(null);
-  const topLevels = useMemo(
-    () => categories.filter((category) => !category.parentId),
-    [categories],
-  );
+  const topLevels = useMemo(() => categories.filter((category) => !category.parentId), [categories]);
   const [bulkCharacter, setBulkCharacter] = useState(topLevels[0]?.id ?? "");
   const bulkSubCategories = useMemo(
     () => categories.filter((category) => category.parentId === bulkCharacter),
     [categories, bulkCharacter],
   );
   const [bulkCategory, setBulkCategory] = useState(bulkSubCategories[0]?.id ?? "");
-  const [bulkTags, setBulkTags] = useState("");
-  const [bulkExpanded, setBulkExpanded] = useState(false);
-
+  const [bulkTags, setBulkTags] = useState<readonly string[]>([]);
+  const [bulkTagDraft, setBulkTagDraft] = useState("");
+  const [bulkTagMode, setBulkTagMode] = useState<"add-tags" | "remove-tags">("add-tags");
+  const [bulkOpen, setBulkOpen] = useState(false);
   const toggleAll = () => {
     const ids = items.map((i) => i.id);
     const allSelected = ids.every((id) => selected.includes(id));
@@ -59,7 +40,6 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
   };
   const toggleOne = useCallback((id: string) => {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-    setBulkExpanded(true);
   }, []);
   const openEdit = useCallback((item: AdminStickerRow) => setEditing(item), []);
 
@@ -73,13 +53,14 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
     const fd = new FormData();
     fd.set("operation", operation);
     fd.set("category", bulkCategory);
-    fd.set("tags", bulkTags);
+    fd.set("tags", bulkTags.join(","));
     selected.forEach((id) => fd.append("ids", id));
     startTransition(async () => {
       try {
         await bulkUpdateStickers(fd);
         feedback.success(`已批量执行：${operation}`);
         setSelected([]);
+        setBulkOpen(false);
         router.refresh();
       } catch (e) {
         feedback.error(e instanceof Error ? e.message : "操作失败。");
@@ -89,100 +70,52 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
 
   const goPage = (next: number) => {
     const params = new URLSearchParams(searchParams);
+    params.set("tab", "stickers");
     params.set("page", String(next));
-    router.push(`/admin?${params.toString()}`);
+    startTransition(() => router.push(`/admin?${params.toString()}`));
+  };
+
+  const setPageSize = (nextSize: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "stickers");
+    params.delete("page");
+    if (nextSize === "20") params.delete("pageSize");
+    else params.set("pageSize", nextSize);
+    startTransition(() => router.push(`/admin?${params.toString()}`));
+  };
+
+  const setSort = (nextSort: StickerSort) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "stickers");
+    params.delete("page");
+    if (nextSort === "grouped") params.delete("sort");
+    else params.set("sort", nextSort);
+    startTransition(() => router.push(`/admin?${params.toString()}`));
+  };
+
+  const addBulkTag = () => {
+    const tag = bulkTagDraft.trim();
+    if (!tag) return;
+    setBulkTags((tags) => (tags.includes(tag) ? tags : [...tags, tag]));
+    setBulkTagDraft("");
   };
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 批量工具栏 */}
       <div className="admin-toolbar p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="admin-section-title">批量操作</h2>
-            <p className="admin-section-description mt-1">已选 {selected.length} 张贴纸</p>
-          </div>
           <Button
             variant="ghost"
-            className="motion-press md:hidden"
-            onPress={() => setBulkExpanded((value) => !value)}
+            className="motion-press"
+            isDisabled={selected.length === 0}
+            onPress={() => setBulkOpen(true)}
           >
-            {bulkExpanded ? "收起操作" : "展开操作"}
+            批量操作（{selected.length}）
           </Button>
-        </div>
-        <div className="collapsible-panel md-open" data-open={bulkExpanded}>
-          <div className="collapsible-body">
-            <div className="mt-3 grid gap-3">
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
-                <CategorySelect
-                  categories={topLevels}
-                  value={bulkCharacter}
-                  onChange={(value) => {
-                    setBulkCharacter(value);
-                    setBulkCategory(
-                      categories.find((category) => category.parentId === value)?.id ?? "",
-                    );
-                  }}
-                />
-                <CategorySelect
-                  categories={bulkSubCategories}
-                  value={bulkCategory}
-                  onChange={setBulkCategory}
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  isPending={pending}
-                  isDisabled={!bulkCategory}
-                  onPress={() => runBulk("category")}
-                  className="motion-press"
-                >
-                  改分类
-                </Button>
-              </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
-                <Input
-                  value={bulkTags}
-                  onChange={(e) => setBulkTags(e.target.value)}
-                  placeholder="标签（逗号分隔）"
-                  className="field-control"
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  isPending={pending}
-                  onPress={() => runBulk("add-tags")}
-                  className="motion-press"
-                >
-                  加标签
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  isPending={pending}
-                  onPress={() => runBulk("remove-tags")}
-                  className="motion-press"
-                >
-                  删标签
-                </Button>
-              </div>
-              <div className="flex justify-start">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  isPending={pending}
-                  onPress={() => runBulk("delete")}
-                  className="motion-press border border-danger/30 text-danger hover:bg-danger/10"
-                >
-                  删除
-                </Button>
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-default-500">已选 {selected.length} 张贴纸</p>
         </div>
       </div>
 
-      {/* 表格 */}
       <div className="mobile-card-list">
         {items.length === 0 ? (
           <p className="admin-panel p-6 text-center text-sm text-default-400">
@@ -217,11 +150,11 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                 </Checkbox>
               </th>
               <th className="p-3">预览</th>
-              <th className="p-3">名字</th>
-              <th className="p-3">分类</th>
+              <SortableHeader label="名字" sort={sort} asc="name" desc="name-desc" onSort={setSort} />
+              <SortableHeader label="分类" sort={sort} asc="category" desc="category-desc" onSort={setSort} />
               <th className="p-3">标签</th>
-              <th className="p-3">状态</th>
-              <th className="p-3">投稿者</th>
+              <SortableHeader label="状态" sort={sort} asc="status" desc="status-desc" onSort={setSort} />
+              <SortableHeader label="投稿者" sort={sort} asc="submitter" desc="submitter-desc" onSort={setSort} />
               <th className="p-3">操作</th>
             </tr>
           </thead>
@@ -236,7 +169,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className={`motion-list-item border-b border-default-100 hover:bg-default-50 last:border-0 dark:hover:bg-default-100/5 ${selectedSet.has(item.id) ? "motion-selection bg-primary/5" : ""}`}
+                  className={`border-b border-default-100 hover:bg-default-50 last:border-0 dark:hover:bg-default-100/5 ${selectedSet.has(item.id) ? "bg-primary/5" : ""}`}
                 >
                   <td className="p-3">
                     <Checkbox
@@ -282,9 +215,7 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
                     </div>
                   </td>
                   <td className="p-3">
-                    <Chip size="sm" variant={STATUS_COLOR[item.status]}>
-                      <Chip.Label>{STATUS_LABEL[item.status]}</Chip.Label>
-                    </Chip>
+                    <StatusChip status={item.status} />
                   </td>
                   <td className="p-3 text-xs text-default-500">
                     <div>
@@ -308,12 +239,12 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
         </table>
       </div>
 
-      {/* 分页 */}
       <div className="admin-toolbar flex flex-wrap items-center justify-between gap-2 p-3 text-sm text-default-500">
         <span>
           第 {page} / {pageCount} 页 · 共 {total} 条
         </span>
         <div className="flex items-center gap-2">
+          <PageSizeSelect value={String(pageSize)} onChange={setPageSize} />
           <Button size="sm" variant="ghost" isDisabled={page <= 1} onPress={() => goPage(page - 1)} className="motion-press">
             上一页
           </Button>
@@ -329,7 +260,6 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
         </div>
       </div>
 
-      {/* 编辑弹窗 */}
       {editing ? (
         <StickerEditModal
           sticker={editing}
@@ -341,90 +271,31 @@ export function StickersTable({ items, categories, page, pageCount, total }: Pro
           }}
         />
       ) : null}
+      <StickersBulkModal
+        topLevels={topLevels}
+        subCategories={bulkSubCategories}
+        character={bulkCharacter}
+        category={bulkCategory}
+        isOpen={bulkOpen}
+        isPending={pending}
+        tags={bulkTags}
+        tagDraft={bulkTagDraft}
+        tagMode={bulkTagMode}
+        onAddTag={addBulkTag}
+        onChangeCategory={setBulkCategory}
+        onChangeCharacter={(value) => {
+          setBulkCharacter(value);
+          setBulkCategory(categories.find((category) => category.parentId === value)?.id ?? "");
+        }}
+        onChangeTagMode={setBulkTagMode}
+        onChangeTagDraft={setBulkTagDraft}
+        onClose={() => setBulkOpen(false)}
+        onRemoveTags={(keys) => {
+          const removed = new Set([...keys].map(String));
+          setBulkTags((tags) => tags.filter((tag) => !removed.has(tag)));
+        }}
+        onRun={runBulk}
+      />
     </div>
   );
 }
-
-const StickerMobileCard = memo(function StickerMobileCard({
-  item,
-  selected,
-  onToggle,
-  onEdit,
-}: {
-  item: AdminStickerRow;
-  selected: boolean;
-  onToggle: (id: string) => void;
-  onEdit: (item: AdminStickerRow) => void;
-}) {
-  return (
-    <article
-      className={`motion-list-item admin-panel p-3 ${
-        selected ? "motion-selection border-primary/60 bg-primary/5" : ""
-      }`}
-    >
-      <div className="flex gap-3">
-        <div className="relative h-20 w-20 flex-none overflow-hidden rounded-lg bg-default-100">
-          <Image
-            src={item.src}
-            alt={item.name}
-            fill
-            sizes="80px"
-            className="object-contain p-1.5"
-            unoptimized={item.ext === "gif"}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="truncate text-sm font-medium">{item.name}</h3>
-              <p className="mt-1 font-mono text-[11px] text-default-400">
-                {item.id} · {item.width}×{item.height} · {item.ext}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant={selected ? "primary" : "ghost"}
-              onPress={() => onToggle(item.id)}
-              className="motion-press flex-none transition-colors duration-150"
-              aria-pressed={selected}
-            >
-              {selected ? "已选择" : "选择"}
-            </Button>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1">
-            <Chip size="sm" variant={STATUS_COLOR[item.status]}>
-              <Chip.Label>{STATUS_LABEL[item.status]}</Chip.Label>
-            </Chip>
-            <Chip size="sm" variant="soft">
-              <Chip.Label>{item.categoryId}</Chip.Label>
-            </Chip>
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1">
-        {item.tags.length === 0 ? (
-          <span className="text-xs text-default-400">无标签</span>
-        ) : (
-          item.tags.slice(0, 6).map((tag) => (
-            <Chip key={tag} size="sm" variant="soft">
-              <Chip.Label>#{tag}</Chip.Label>
-            </Chip>
-          ))
-        )}
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-default-100 pt-3">
-        <span className="text-xs text-default-500">
-          {item.submitterLogin ? `@${item.submitterLogin}` : (item.submitterName ?? "—")}
-        </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          onPress={() => onEdit(item)}
-          className="motion-press"
-        >
-          编辑
-        </Button>
-      </div>
-    </article>
-  );
-});

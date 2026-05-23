@@ -41,20 +41,23 @@ export default async function AdminPage({ searchParams }: PageProps) {
   return (
     <div className="motion-page admin-shell">
       <AdminClientShell
+        key={tab}
         initialTab={tab}
         pendingCount={counts.pending}
         isAdmin={isAdmin}
-        panels={{
-          submissions: panelSlot("submissions", <SubmissionsPanel />),
-          stickers: panelSlot("stickers", <StickersPanel searchParams={sp} />),
-          categories: panelSlot("categories", <CategoriesPanel />),
-          tags: panelSlot("tags", <TagsPanel />),
-          upload: panelSlot("upload", <UploadFormPanel />),
-          ...(isAdmin ? { users: panelSlot("users", <UsersPanel searchParams={sp} />) } : {}),
-        }}
+        panel={panelSlot(tab, renderPanel(tab, sp))}
       />
     </div>
   );
+}
+
+function renderPanel(tab: AdminTab, searchParams: Record<string, string | string[] | undefined>) {
+  if (tab === "submissions") return <SubmissionsPanel />;
+  if (tab === "stickers") return <StickersPanel searchParams={searchParams} />;
+  if (tab === "categories") return <CategoriesPanel />;
+  if (tab === "tags") return <TagsPanel />;
+  if (tab === "upload") return <UploadFormPanel />;
+  return <UsersPanel searchParams={searchParams} />;
 }
 
 function single(value: string | string[] | undefined): string | undefined {
