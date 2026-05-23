@@ -28,7 +28,7 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
           setLocalValue(nextValue);
           onChange?.(nextValue);
         }}
-        className="min-w-44"
+        className="w-full min-w-0 sm:min-w-44"
       >
         <Select.Trigger className={`field-trigger ${triggerClassName ?? ""}`}>
           <Select.Value />

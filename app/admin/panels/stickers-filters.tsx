@@ -13,7 +13,7 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "已拒绝" },
 ];
 const SORT_OPTIONS = [
-  { value: "grouped", label: "角色-分类-上传时间" },
+  { value: "grouped", label: "默认排序" },
   { value: "newest", label: "最新优先" },
   { value: "oldest", label: "最早优先" },
   { value: "name", label: "按名字" },
@@ -182,7 +182,7 @@ export function StickersFilters({ categories, current }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <label className="text-xs text-default-500">{label}</label>
       {children}
     </div>
@@ -205,8 +205,9 @@ function OptionSelect({
       aria-label={ariaLabel}
       selectedKey={value}
       onSelectionChange={(key) => onChange(String(key))}
+      className="w-full min-w-0"
     >
-      <Select.Trigger className="field-trigger">
+      <Select.Trigger className="field-trigger w-full min-w-0">
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
