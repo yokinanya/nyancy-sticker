@@ -5,6 +5,7 @@ import type { AdminTab } from "./admin-tabs";
 import { AdminClientShell } from "./admin-client-shell";
 import { SubmissionsPanel } from "./panels/submissions-panel";
 import { StickersPanel } from "./panels/stickers-panel";
+import { DuplicatesPanel } from "./panels/duplicates-panel";
 import { CategoriesPanel } from "./panels/categories-panel";
 import { UploadFormPanel } from "./panels/upload-form-panel";
 import { UsersPanel } from "./panels/users-panel";
@@ -16,6 +17,7 @@ export const metadata = {
 const BASE_TABS: readonly AdminTab[] = [
   "submissions",
   "stickers",
+  "duplicates",
   "categories",
   "upload",
 ];
@@ -52,6 +54,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
 function renderPanel(tab: AdminTab, searchParams: Record<string, string | string[] | undefined>) {
   if (tab === "submissions") return <SubmissionsPanel />;
   if (tab === "stickers") return <StickersPanel searchParams={searchParams} />;
+  if (tab === "duplicates") return <DuplicatesPanel />;
   if (tab === "categories") return <CategoriesPanel />;
   if (tab === "upload") return <UploadFormPanel />;
   return <UsersPanel searchParams={searchParams} />;
@@ -87,6 +90,7 @@ function panelLoadingLabel(tab: AdminTab) {
   const labels: Record<AdminTab, string> = {
     submissions: "正在加载投稿审核...",
     stickers: "正在加载贴纸列表...",
+    duplicates: "正在加载查重结果...",
     categories: "正在加载分类...",
     upload: "正在加载上传面板...",
     users: "正在加载用户列表...",

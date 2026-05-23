@@ -15,6 +15,7 @@ import type { AdapterAccountType } from "next-auth/adapters";
 export const userRole = pgEnum("user_role", ["user", "editor", "admin"]);
 export const stickerExt = pgEnum("sticker_ext", ["png", "gif", "webp", "jpg", "jpeg"]);
 export const stickerStatus = pgEnum("sticker_status", ["approved", "pending", "rejected"]);
+export const similarityDecision = pgEnum("similarity_decision", ["keep_both"]);
 
 export const users = pgTable("user", {
   id: text("id")
@@ -94,6 +95,7 @@ export const stickers = pgTable(
     height: integer("height").notNull(),
     ext: stickerExt("ext").notNull(),
     hash: text("hash").notNull(),
+    visualHash: text("visualHash"),
     categoryId: text("categoryId")
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
@@ -118,9 +120,34 @@ export const stickers = pgTable(
       .on(s.submittedAt)
       .where(sql`${s.status} = 'pending'`),
     index("sticker_tags_gin_idx").using("gin", s.tags),
+    index("sticker_visual_hash_active_idx")
+      .on(s.visualHash)
+      .where(sql`${s.status} <> 'rejected'`),
     uniqueIndex("sticker_hash_active_idx")
       .on(s.hash)
       .where(sql`${s.status} <> 'rejected'`),
+  ],
+);
+
+export const stickerSimilarityDecisions = pgTable(
+  "sticker_similarity_decision",
+  {
+    leftStickerId: text("leftStickerId")
+      .notNull()
+      .references(() => stickers.id, { onDelete: "cascade" }),
+    rightStickerId: text("rightStickerId")
+      .notNull()
+      .references(() => stickers.id, { onDelete: "cascade" }),
+    decision: similarityDecision("decision").notNull().default("keep_both"),
+    reason: text("reason"),
+    createdById: text("createdById").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (decision) => [
+    primaryKey({ columns: [decision.leftStickerId, decision.rightStickerId] }),
+    index("sticker_similarity_decision_right_idx").on(decision.rightStickerId),
   ],
 );
 

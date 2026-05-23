@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
+import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
 import { uploadStickerFile } from "@/lib/upload";
 
 export const runtime = "nodejs";
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     if (!found) throw new Error(`分类不存在：${category}`);
     if (!found.parentId) throw new Error("必须选择具体子分类，不能直接挂到角色下。");
 
+    await assertActiveVisualHashesComplete();
     const uploaded = await uploadStickerFile(file, category);
 
     try {
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
         height: uploaded.height,
         ext: uploaded.ext,
         hash: uploaded.hash,
+        visualHash: uploaded.visualHash,
         categoryId: category,
         tags,
         status: "approved",

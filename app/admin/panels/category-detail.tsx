@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button, Chip } from "@/components/ui/heroui-compat";
 import { deleteCategory } from "@/app/admin/actions";
 import type { CategoryWithCount } from "@/lib/queries/categories";
@@ -155,11 +156,12 @@ function SubcategoryRow({
   onEdit: (category: CategoryWithCount) => void;
   onSubmit: SubmitHandler;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const onDelete = () => {
-    if (!window.confirm(`确认删除分类 ${category.id}？`)) return;
     const fd = new FormData();
     fd.set("categoryId", category.id);
     onSubmit(deleteCategory, fd, `已删除：${category.id}`);
+    setConfirmingDelete(false);
   };
 
   return (
@@ -171,12 +173,31 @@ function SubcategoryRow({
       <td className="p-3 text-default-500">{formatDate(category.createdAt)}</td>
       <td className="p-3">
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" onPress={() => onEdit(category)} className="motion-press">
-            编辑
-          </Button>
-          <Button size="sm" variant="ghost" isPending={pending} onPress={onDelete} className="motion-press">
-            删除
-          </Button>
+          {confirmingDelete ? (
+            <>
+              <Button size="sm" variant="ghost" isDisabled={pending} onPress={() => setConfirmingDelete(false)} className="motion-press">
+                取消
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                isPending={pending}
+                onPress={onDelete}
+                className="motion-press border border-danger/30 text-danger hover:bg-danger/10"
+              >
+                确认删除
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onPress={() => onEdit(category)} className="motion-press">
+                编辑
+              </Button>
+              <Button size="sm" variant="ghost" isPending={pending} onPress={() => setConfirmingDelete(true)} className="motion-press">
+                删除
+              </Button>
+            </>
+          )}
         </div>
       </td>
     </tr>

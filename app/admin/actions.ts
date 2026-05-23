@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
+import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
+import { keyFromUrl, remove } from "@/lib/r2";
 import { uploadStickerFile } from "@/lib/upload";
 
 export async function bulkUpdateStickers(formData: FormData): Promise<void> {
@@ -36,12 +38,50 @@ export async function bulkUpdateStickers(formData: FormData): Promise<void> {
       })
       .where(inArray(stickers.id, idList));
   } else if (operation === "delete") {
-    await db.delete(stickers).where(inArray(stickers.id, idList));
+    await deleteRejectedStickers(idList);
   } else {
     throw new Error(`未知批量操作：${operation}`);
   }
 
   revalidateAdminPages();
+}
+
+async function deleteRejectedStickers(ids: readonly string[]): Promise<void> {
+  const rows = await db
+    .select({
+      id: stickers.id,
+      previewSrc: stickers.previewSrc,
+      src: stickers.src,
+      status: stickers.status,
+    })
+    .from(stickers)
+    .where(inArray(stickers.id, ids));
+  assertOnlyRejectedRows(ids, rows);
+  await Promise.all(rows.flatMap((row) => stickerObjectKeys(row).map((key) => remove(key))));
+  await db
+    .delete(stickers)
+    .where(and(inArray(stickers.id, rows.map((row) => row.id)), eq(stickers.status, "rejected")));
+}
+
+function assertOnlyRejectedRows(ids: readonly string[], rows: readonly DeletableStickerRow[]): void {
+  if (rows.length !== ids.length) throw new Error("部分贴纸不存在，无法删除。");
+  const active = rows.filter((row) => row.status !== "rejected");
+  if (active.length > 0) {
+    throw new Error(`只能删除已拒绝的贴纸，以下贴纸不是已拒绝状态：${active.map((row) => row.id).join(", ")}`);
+  }
+}
+
+function stickerObjectKeys(row: Pick<DeletableStickerRow, "previewSrc" | "src">): string[] {
+  return [row.src, row.previewSrc]
+    .map((url) => (url ? keyFromUrl(url) : null))
+    .filter((key): key is string => Boolean(key));
+}
+
+interface DeletableStickerRow {
+  id: string;
+  previewSrc: string | null;
+  src: string;
+  status: "approved" | "pending" | "rejected";
 }
 
 export async function uploadStickers(formData: FormData): Promise<void> {
@@ -52,6 +92,7 @@ export async function uploadStickers(formData: FormData): Promise<void> {
   if (files.length === 0) throw new Error("请选择至少一个图片文件。");
   const tagsValue = formData.get("uploadTags");
   const tags = typeof tagsValue === "string" && tagsValue.trim() ? splitTags(tagsValue) : [];
+  await assertActiveVisualHashesComplete();
 
   for (const file of files) {
     const uploaded = await uploadStickerFile(file, category);
@@ -66,6 +107,7 @@ export async function uploadStickers(formData: FormData): Promise<void> {
         height: uploaded.height,
         ext: uploaded.ext,
         hash: uploaded.hash,
+        visualHash: uploaded.visualHash,
         categoryId: category,
         tags,
         status: "approved",

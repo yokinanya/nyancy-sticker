@@ -9,6 +9,7 @@ import type { AdminTab } from "./admin-tabs";
 const BASE_TABS = [
   { key: "submissions", title: "投稿审核" },
   { key: "stickers", title: "贴纸" },
+  { key: "duplicates", title: "查重" },
   { key: "categories", title: "分类" },
   { key: "upload", title: "上传" },
 ] as const;

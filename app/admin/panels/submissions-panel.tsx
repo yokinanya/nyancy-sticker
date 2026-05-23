@@ -2,30 +2,12 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { stickers, users } from "@/drizzle/schema";
 import { listAllCategories } from "@/lib/queries/categories";
+import { findSimilarStickersForSources } from "@/lib/queries/similar-stickers";
 import { SubmissionList } from "@/app/admin/submissions/submission-list";
 
 export async function SubmissionsPanel() {
   const [pending, categories] = await Promise.all([
-    db
-      .select({
-        id: stickers.id,
-        name: stickers.name,
-        src: stickers.src,
-        previewSrc: stickers.previewSrc,
-        width: stickers.width,
-        height: stickers.height,
-        ext: stickers.ext,
-        hash: stickers.hash,
-        categoryId: stickers.categoryId,
-        tags: stickers.tags,
-        submittedAt: stickers.submittedAt,
-        submitterName: users.name,
-        submitterLogin: users.githubLogin,
-      })
-      .from(stickers)
-      .leftJoin(users, eq(stickers.submittedById, users.id))
-      .where(eq(stickers.status, "pending"))
-      .orderBy(asc(stickers.submittedAt)),
+    listPendingSubmissions(),
     listAllCategories(),
   ]);
 
@@ -37,11 +19,39 @@ export async function SubmissionsPanel() {
     );
   }
 
-  return <SubmissionList submissions={pending.map(requirePreviewSrc)} categories={categories} />;
+  const similarById = await findSimilarStickersForSources(pending);
+  const submissions = pending.map((submission) => ({
+    ...requirePreviewSrc(submission),
+    similarCandidates: similarById.get(submission.id) ?? [],
+  }));
+  return <SubmissionList submissions={submissions} categories={categories} />;
 }
 
-type PendingSubmission = {
-  id: string;
+function listPendingSubmissions() {
+  return db
+    .select({
+      id: stickers.id,
+      name: stickers.name,
+      src: stickers.src,
+      previewSrc: stickers.previewSrc,
+      width: stickers.width,
+      height: stickers.height,
+      ext: stickers.ext,
+      hash: stickers.hash,
+      visualHash: stickers.visualHash,
+      categoryId: stickers.categoryId,
+      tags: stickers.tags,
+      submittedAt: stickers.submittedAt,
+      submitterName: users.name,
+      submitterLogin: users.githubLogin,
+    })
+    .from(stickers)
+    .leftJoin(users, eq(stickers.submittedById, users.id))
+    .where(eq(stickers.status, "pending"))
+    .orderBy(asc(stickers.submittedAt));
+}
+
+type PendingSubmission = Awaited<ReturnType<typeof listPendingSubmissions>>[number] & {
   previewSrc: string | null;
 };
 

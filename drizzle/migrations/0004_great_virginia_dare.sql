@@ -1,0 +1,2 @@
+ALTER TABLE "sticker" ADD COLUMN "visualHash" text;--> statement-breakpoint
+CREATE INDEX "sticker_visual_hash_active_idx" ON "sticker" USING btree ("visualHash") WHERE "sticker"."status" <> 'rejected';

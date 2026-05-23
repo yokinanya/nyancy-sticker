@@ -42,6 +42,14 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
   const [bulkTagDraft, setBulkTagDraft] = useState("");
   const [bulkTagMode, setBulkTagMode] = useState<"add-tags" | "remove-tags">("add-tags");
   const [bulkOpen, setBulkOpen] = useState(false);
+  const selectedItems = useMemo(
+    () => selected.map((id) => items.find((item) => item.id === id)).filter((item): item is AdminStickerRow => Boolean(item)),
+    [items, selected],
+  );
+  const deleteDisabledReason = useMemo(
+    () => bulkDeleteDisabledReason(selected.length, selectedItems),
+    [selected.length, selectedItems],
+  );
   const toggleAll = () => {
     const ids = items.map((i) => i.id);
     const allSelected = ids.every((id) => selected.includes(id));
@@ -58,7 +66,10 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
       feedback.error("请选择子分类。");
       return;
     }
-    if (operation === "delete" && !window.confirm(`确认删除 ${selected.length} 张贴纸？`)) return;
+    if (operation === "delete" && deleteDisabledReason) {
+      feedback.error(deleteDisabledReason);
+      return;
+    }
     const fd = new FormData();
     fd.set("operation", operation);
     fd.set("category", bulkCategory);
@@ -204,6 +215,7 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
         category={bulkCategory}
         isOpen={bulkOpen}
         isPending={pending}
+        selectedCount={selected.length}
         tags={bulkTags}
         tagDraft={bulkTagDraft}
         tagMode={bulkTagMode}
@@ -216,6 +228,7 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
         onChangeTagMode={setBulkTagMode}
         onChangeTagDraft={setBulkTagDraft}
         onClose={() => setBulkOpen(false)}
+        deleteDisabledReason={deleteDisabledReason}
         onRemoveTags={(keys) => {
           const removed = new Set([...keys].map(String));
           setBulkTags((tags) => tags.filter((tag) => !removed.has(tag)));
@@ -244,4 +257,15 @@ function setFilterParams(params: URLSearchParams, updates: StickerFilterUpdates)
     else params.delete(key);
   });
   if (updates.character === "") params.delete("category");
+}
+
+function bulkDeleteDisabledReason(
+  selectedCount: number,
+  selectedItems: readonly AdminStickerRow[],
+): string | null {
+  if (selectedCount === 0) return "请先选择至少一张贴纸。";
+  if (selectedItems.length !== selectedCount) return "当前选择包含未加载的贴纸，请在当前页重新选择。";
+  const active = selectedItems.filter((item) => item.status !== "rejected");
+  if (active.length > 0) return "只能删除已拒绝的贴纸。";
+  return null;
 }
