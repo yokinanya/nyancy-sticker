@@ -920,6 +920,20 @@ body {
     inset 0 0 0 1px var(--glass-border-muted);
 }
 
+.sticker-edit-footer {
+  border-top: 1px solid rgb(var(--default-200));
+  background: rgb(var(--surface-raised) / 0.46);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.dark .sticker-edit-footer {
+  border-top-color: rgb(var(--default-200));
+  background: rgb(var(--surface-raised) / 0.42);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
 .popover-surface {
   max-height: min(20rem, calc(100dvh - 6rem));
   overflow: auto;
@@ -975,6 +989,30 @@ body {
 .listbox-option[aria-selected="true"] {
   background: rgb(var(--primary) / 0.12);
   color: rgb(var(--primary));
+}
+
+@media (max-width: 767px) {
+  .popover-surface {
+    border-color: rgb(var(--border-subtle));
+    background: rgb(var(--surface-raised) / 0.97);
+    box-shadow:
+      0 18px 42px rgb(15 23 42 / 0.18),
+      inset 0 1px 0 rgb(255 255 255 / 0.72);
+    backdrop-filter: blur(10px) saturate(125%);
+    -webkit-backdrop-filter: blur(10px) saturate(125%);
+  }
+
+  .dark .popover-surface {
+    background: rgb(var(--surface-raised) / 0.98);
+    box-shadow:
+      0 20px 48px rgb(0 0 0 / 0.46),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+
+  .listbox-option[data-selected="true"],
+  .listbox-option[aria-selected="true"] {
+    background: rgb(var(--primary) / 0.16);
+  }
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

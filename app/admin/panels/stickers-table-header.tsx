@@ -237,8 +237,10 @@ function usePopoverLifecycle(
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
+      if (!(event.target instanceof Element)) return;
+      const target = event.target;
       if (buttonRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
+      if (target.closest("[data-choice-popover]")) return;
       close();
     };
     const onKeyDown = (event: KeyboardEvent) => event.key === "Escape" && close();

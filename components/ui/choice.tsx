@@ -176,7 +176,8 @@ function AutocompleteTrigger({ className, children, onKeyDown, ...props }: HTMLA
       aria-disabled={choice.disabled || undefined}
       aria-expanded={choice.open}
       aria-haspopup="listbox"
-      onClick={() => {
+      onClick={(event) => {
+        event.stopPropagation();
         if (!choice.disabled) choice.setOpen(!choice.open);
       }}
       onKeyDown={handleKeyDown}

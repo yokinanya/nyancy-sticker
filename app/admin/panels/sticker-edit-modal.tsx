@@ -61,11 +61,11 @@ export function StickerEditModal({ sticker, categories, onClose, onSaved }: Stic
           <Modal.Dialog
             className={`motion-panel modal-surface flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden ${error ? "motion-shake" : ""}`}
           >
-            <Modal.CloseTrigger className="motion-press absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
+            <Modal.CloseTrigger className="motion-press absolute right-3 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md text-base leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
               <span aria-hidden="true">×</span>
             </Modal.CloseTrigger>
-            <Modal.Header className="border-b border-default-200 pb-4">
-              <Modal.Heading>编辑贴纸</Modal.Heading>
+            <Modal.Header className="border-b border-default-200 px-4 py-2 sm:px-5">
+              <Modal.Heading className="text-sm">编辑贴纸</Modal.Heading>
             </Modal.Header>
             <Modal.Body className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
               <StickerEditWorkspace
@@ -75,7 +75,7 @@ export function StickerEditModal({ sticker, categories, onClose, onSaved }: Stic
                 sticker={sticker}
               />
             </Modal.Body>
-            <Modal.Footer className="border-t border-default-200 bg-surface-raised/95 pt-4">
+            <Modal.Footer className="sticker-edit-footer px-4 py-2 sm:px-5">
               <div className="flex w-full flex-wrap justify-end gap-2">
                 <Button variant="ghost" onPress={onClose} className="motion-press">
                   取消
