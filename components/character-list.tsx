@@ -18,16 +18,14 @@ export function CharacterList({ characters }: Props) {
 
   return (
     <div className="motion-panel flex flex-col gap-3">
-      <div className="toolbar p-2">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索角色"
-          className="field-control"
-          aria-label="搜索角色"
-        />
-      </div>
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="搜索角色"
+        className="field-control"
+        aria-label="搜索角色"
+      />
       {filteredCharacters.length === 0 ? (
         <p className="surface p-6 text-center text-sm text-muted">没有匹配的角色。</p>
       ) : (

@@ -143,7 +143,7 @@ export function StickerPreviewModal({ sticker, isOpen, onOpenChange }: Props) {
                   isDisabled={busy !== null && busy !== "download"}
                   isPending={busy === "download"}
                   onPress={onDownload}
-                  className="motion-press"
+                  className="motion-press border-white/80 bg-white/95 text-default-800 shadow-[0_8px_22px_rgb(15_23_42/0.12),inset_0_1px_0_rgb(255_255_255/0.9)] hover:border-white hover:bg-white hover:text-foreground dark:border-white/20 dark:bg-white/90 dark:text-zinc-900 dark:hover:bg-white"
                 >
                   下载
                 </Button>
