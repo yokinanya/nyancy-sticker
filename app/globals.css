@@ -315,6 +315,14 @@ body {
   background: rgb(39 39 42);
 }
 
+.field-trigger > span {
+  min-width: 0;
+}
+
+.field-trigger svg {
+  flex-shrink: 0;
+}
+
 .modal-field:focus,
 .modal-field:focus-visible,
 .modal-field:focus-within {

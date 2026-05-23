@@ -98,7 +98,7 @@ export function StickersFilters({ categories, current }: Props) {
       <div className="collapsible-panel md-open" data-open={expanded}>
         <div className="collapsible-body">
           <div className="mt-3 grid gap-3">
-            <div className="grid grid-cols-2 items-end gap-2 lg:grid-cols-[minmax(8rem,12rem)_minmax(8rem,12rem)_minmax(8rem,12rem)_minmax(8rem,12rem)]">
+            <div className="grid grid-cols-2 items-end gap-2 lg:grid-cols-4">
               <Field label="状态">
                 <OptionSelect
                   ariaLabel="状态"
@@ -139,7 +139,7 @@ export function StickersFilters({ categories, current }: Props) {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-2 lg:grid-cols-[minmax(10rem,14rem)_minmax(12rem,1fr)_minmax(8rem,10rem)_auto_auto]">
+            <div className="grid grid-cols-1 items-end gap-2 md:grid-cols-[minmax(10rem,16rem)_minmax(16rem,1fr)] lg:grid-cols-[minmax(10rem,14rem)_minmax(20rem,1fr)_auto]">
               <Field label="标签">
                 <Input
                   value={tag}
@@ -156,8 +156,8 @@ export function StickersFilters({ categories, current }: Props) {
                   className="field-control"
                 />
               </Field>
-              <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-2 lg:col-span-3">
-                <Field label="每页">
+              <div className="grid grid-cols-[minmax(4.5rem,6rem)_auto_auto] items-end gap-2 md:col-span-2 md:justify-self-end lg:col-span-1">
+                <Field label="每页" className="w-full">
                   <OptionSelect
                     ariaLabel="每页"
                     value={pageSize}
@@ -180,9 +180,17 @@ export function StickersFilters({ categories, current }: Props) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className={`flex min-w-0 flex-col gap-1 ${className}`}>
       <label className="text-xs text-default-500">{label}</label>
       {children}
     </div>
@@ -207,9 +215,9 @@ function OptionSelect({
       onSelectionChange={(key) => onChange(String(key))}
       className="w-full min-w-0"
     >
-      <Select.Trigger className="field-trigger w-full min-w-0">
-        <Select.Value />
-        <Select.Indicator />
+      <Select.Trigger className="field-trigger flex w-full min-w-0 items-center gap-2">
+        <Select.Value className="min-w-0 flex-1 truncate" />
+        <Select.Indicator className="ml-auto shrink-0" />
       </Select.Trigger>
       <Select.Popover className="motion-popover popover-surface">
         <ListBox>

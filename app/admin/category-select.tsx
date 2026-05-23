@@ -30,9 +30,11 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
         }}
         className="w-full min-w-0 sm:min-w-44"
       >
-        <Select.Trigger className={`field-trigger ${triggerClassName ?? ""}`}>
-          <Select.Value />
-          <Select.Indicator />
+        <Select.Trigger
+          className={`field-trigger flex min-w-0 items-center gap-2 ${triggerClassName ?? ""}`}
+        >
+          <Select.Value className="min-w-0 flex-1 truncate" />
+          <Select.Indicator className="ml-auto shrink-0" />
         </Select.Trigger>
         <Select.Popover className="motion-popover popover-surface">
           <ListBox>
