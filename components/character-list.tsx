@@ -53,6 +53,8 @@ function CharacterCard({
   isNavigating: boolean;
   onNavigate: (id: string) => void;
 }) {
+  const hasBackground = Boolean(character.backgroundImageUrl);
+
   return (
     <li className="motion-list-item">
       <Link
@@ -66,31 +68,45 @@ function CharacterCard({
         {character.backgroundImageUrl ? (
           <>
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-55 transition duration-200 group-hover:scale-[1.02] group-hover:opacity-70"
+              className="absolute inset-0 bg-cover bg-center opacity-90 transition duration-200 group-hover:scale-[1.02] group-hover:opacity-100"
               style={{ backgroundImage: `url("${escapeCssUrl(character.backgroundImageUrl)}")` }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/58 to-background/28" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/36 to-black/12" />
           </>
         ) : null}
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold">{character.name}</h3>
-            <p className="mt-1 font-mono text-[11px] text-muted">{character.id}</p>
+            <h3 className={`truncate text-base font-semibold ${hasBackground ? "text-white" : ""}`}>
+              {character.name}
+            </h3>
+            <p className={`mt-1 font-mono text-[11px] ${hasBackground ? "text-white/75" : "text-muted"}`}>
+              {character.id}
+            </p>
           </div>
-          <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs text-primary">
+          <span
+            className={`rounded-md border px-2 py-1 text-xs ${
+              hasBackground
+                ? "border-white/30 bg-black/30 text-white shadow-sm"
+                : "border-primary/20 bg-primary/10 text-primary"
+            }`}
+          >
             {character.count} 张
           </span>
         </div>
         <div className="relative flex items-center justify-between text-sm">
-          <span className="text-muted">进入图库</span>
+          <span className={hasBackground ? "text-white/85" : "text-muted"}>进入图库</span>
           {isNavigating ? (
             <span
               aria-label="正在进入"
-              className="h-4 w-4 animate-spin rounded-full border-2 border-default-300 border-t-primary"
+              className={`h-4 w-4 animate-spin rounded-full border-2 ${
+                hasBackground ? "border-white/35 border-t-white" : "border-default-300 border-t-primary"
+              }`}
               role="status"
             />
           ) : (
-            <span className="text-primary transition group-hover:translate-x-0.5">→</span>
+            <span className={`${hasBackground ? "text-white" : "text-primary"} transition group-hover:translate-x-0.5`}>
+              →
+            </span>
           )}
         </div>
       </Link>
