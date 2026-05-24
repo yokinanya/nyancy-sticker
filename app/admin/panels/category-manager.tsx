@@ -25,6 +25,7 @@ import { RoleList } from "./category-role-list";
 interface Props {
   categories: readonly CategoryWithCount[];
   characters: readonly CharacterWithCount[];
+  canAddRole: boolean;
 }
 
 type Draft =
@@ -33,7 +34,7 @@ type Draft =
   | { mode: "add-category"; character: CharacterWithCount; category: null }
   | { mode: "edit-category"; character: null; category: CategoryWithCount };
 
-export function CategoryManager({ categories, characters }: Props) {
+export function CategoryManager({ canAddRole, categories, characters }: Props) {
   const router = useRouter();
   const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
@@ -66,6 +67,7 @@ export function CategoryManager({ categories, characters }: Props) {
           query={query}
           selectedId={selected?.id ?? null}
           onAddRole={() => setDraft({ mode: "add-character", character: null, category: null })}
+          canAddRole={canAddRole}
           onQueryChange={setQuery}
           onSelect={setSelectedId}
           totalRoles={characters.length}

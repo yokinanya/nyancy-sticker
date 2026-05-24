@@ -45,17 +45,21 @@ export default async function AdminPage({ searchParams }: PageProps) {
         initialTab={tab}
         pendingCount={counts.pending}
         isAdmin={isAdmin}
-        panel={panelSlot(tab, renderPanel(tab, sp))}
+        panel={panelSlot(tab, renderPanel(tab, sp, isAdmin))}
       />
     </div>
   );
 }
 
-function renderPanel(tab: AdminTab, searchParams: Record<string, string | string[] | undefined>) {
+function renderPanel(
+  tab: AdminTab,
+  searchParams: Record<string, string | string[] | undefined>,
+  isAdmin: boolean,
+) {
   if (tab === "submissions") return <SubmissionsPanel />;
   if (tab === "stickers") return <StickersPanel searchParams={searchParams} />;
   if (tab === "duplicates") return <DuplicatesPanel />;
-  if (tab === "categories") return <CategoriesPanel />;
+  if (tab === "categories") return <CategoriesPanel isAdmin={isAdmin} />;
   if (tab === "upload") return <UploadFormPanel />;
   return <UsersPanel searchParams={searchParams} />;
 }

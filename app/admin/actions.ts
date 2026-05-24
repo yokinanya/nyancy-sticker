@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, characters, stickers } from "@/drizzle/schema";
-import { requireEditor } from "@/lib/auth-helpers";
+import { requireAdmin, requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
 import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
@@ -177,7 +177,7 @@ export async function updateCategory(formData: FormData): Promise<void> {
 }
 
 export async function addCharacter(formData: FormData): Promise<void> {
-  const session = await requireEditor();
+  const session = await requireAdmin();
   const id = readText(formData, "characterId");
   const exists = await db.query.characters.findFirst({ where: eq(characters.id, id) });
   if (exists) throw new Error(`角色已存在：${id}`);

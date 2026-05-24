@@ -4,6 +4,7 @@ import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/catego
 interface RoleListProps {
   roles: readonly CharacterWithCount[];
   categories: readonly CategoryWithCount[];
+  canAddRole: boolean;
   query: string;
   selectedId: string | null;
   totalRoles: number;
@@ -15,6 +16,7 @@ interface RoleListProps {
 export function RoleList({
   roles,
   categories,
+  canAddRole,
   query,
   selectedId,
   totalRoles,
@@ -24,7 +26,7 @@ export function RoleList({
 }: RoleListProps) {
   return (
     <aside className="admin-panel overflow-hidden">
-      <RoleListHeader totalRoles={totalRoles} onAddRole={onAddRole} />
+      <RoleListHeader canAddRole={canAddRole} totalRoles={totalRoles} onAddRole={onAddRole} />
       <div className="border-b border-default-100 p-3">
         <Input
           value={query}
@@ -39,21 +41,25 @@ export function RoleList({
 }
 
 function RoleListHeader({
+  canAddRole,
   totalRoles,
   onAddRole,
 }: {
+  canAddRole: boolean;
   totalRoles: number;
   onAddRole: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-default-100 p-3">
       <div>
-        <h2 className="admin-section-title">角色树</h2>
+        <h2 className="admin-section-title">角色</h2>
         <p className="admin-section-description">{totalRoles} 个角色</p>
       </div>
-      <Button size="sm" variant="primary" onPress={onAddRole} className="motion-press">
-        新增
-      </Button>
+      {canAddRole ? (
+        <Button size="sm" variant="primary" onPress={onAddRole} className="motion-press">
+          新增
+        </Button>
+      ) : null}
     </div>
   );
 }
