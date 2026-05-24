@@ -17,15 +17,12 @@ export interface CharacterSummary {
  */
 export async function listCharactersWithCounts(): Promise<CharacterSummary[]> {
   const result = await db.execute<{ id: string; name: string; count: number }>(sql`
-    SELECT c.id, c.name, COUNT(s.id)::int AS count
-    FROM "category" c
-    LEFT JOIN "category" sub ON sub."parentId" = c.id
-    LEFT JOIN "sticker" s
-      ON (s."categoryId" = c.id OR s."categoryId" = sub.id)
-      AND s.status = 'approved'
-    WHERE c."parentId" IS NULL
-    GROUP BY c.id, c.name
-    ORDER BY c.id ASC
+    SELECT ch.id, ch.name, COUNT(s.id)::int AS count
+    FROM "character" ch
+    LEFT JOIN "category" c ON c."characterId" = ch.id
+    LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
+    GROUP BY ch.id, ch.name
+    ORDER BY ch.id ASC
   `);
   return result.rows.map((r) => ({ id: r.id, name: r.name, count: Number(r.count) }));
 }
@@ -38,7 +35,7 @@ export const listCachedCharactersWithCounts = unstable_cache(
 
 export async function findCharacter(id: string): Promise<{ id: string; name: string } | null> {
   const result = await db.execute<{ id: string; name: string }>(sql`
-    SELECT id, name FROM "category" WHERE id = ${id} AND "parentId" IS NULL LIMIT 1
+    SELECT id, name FROM "character" WHERE id = ${id} LIMIT 1
   `);
   return result.rows[0] ?? null;
 }

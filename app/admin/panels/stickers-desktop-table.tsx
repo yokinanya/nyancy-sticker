@@ -2,7 +2,7 @@
 
 import { Checkbox } from "@/components/ui/heroui-compat";
 import type { AdminStickerRow, StickerSort } from "@/lib/queries/admin-stickers";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import { StickerDesktopRow } from "./stickers-desktop-row";
 import {
   CategoryFilterContent,
@@ -19,6 +19,7 @@ import {
 
 interface Props {
   categories: readonly Category[];
+  characters: readonly Character[];
   filters: StickerTableFilters;
   items: readonly AdminStickerRow[];
   onApplyFilter: (updates: StickerFilterUpdates) => void;
@@ -32,6 +33,7 @@ interface Props {
 
 export function StickersDesktopTable({
   categories,
+  characters,
   filters,
   items,
   onApplyFilter,
@@ -48,6 +50,7 @@ export function StickersDesktopTable({
       <table className="w-full min-w-[980px] text-left text-sm">
         <StickerTableHead
           categories={categories}
+          characters={characters}
           filters={filters}
           items={items}
           onApplyFilter={onApplyFilter}
@@ -70,6 +73,7 @@ export function StickersDesktopTable({
 
 function StickerTableHead({
   categories,
+  characters,
   filters,
   items,
   onApplyFilter,
@@ -94,7 +98,14 @@ function StickerTableHead({
         </th>
         <th className="p-3">预览</th>
         <NameHeader filters={filters} onApplyFilter={onApplyFilter} onSort={onSort} sort={sort} />
-        <CategoryHeader categories={categories} filters={filters} onApplyFilter={onApplyFilter} onSort={onSort} sort={sort} />
+        <CategoryHeader
+          categories={categories}
+          characters={characters}
+          filters={filters}
+          onApplyFilter={onApplyFilter}
+          onSort={onSort}
+          sort={sort}
+        />
         <th className="p-3">标签</th>
         <StatusHeader filters={filters} onApplyFilter={onApplyFilter} onSort={onSort} sort={sort} />
         <SubmitterHeader filters={filters} onApplyFilter={onApplyFilter} onSort={onSort} sort={sort} />
@@ -156,8 +167,9 @@ function NameHeader({ filters, onApplyFilter, onSort, sort }: HeaderProps) {
   );
 }
 
-function CategoryHeader({ categories, filters, onApplyFilter, onSort, sort }: HeaderProps & {
+function CategoryHeader({ categories, characters, filters, onApplyFilter, onSort, sort }: HeaderProps & {
   categories: readonly Category[];
+  characters: readonly Character[];
 }) {
   return (
     <FilterHeader
@@ -171,6 +183,7 @@ function CategoryHeader({ categories, filters, onApplyFilter, onSort, sort }: He
       {(close) => (
         <CategoryFilterContent
           categories={categories}
+          characters={characters}
           filters={filters}
           onApply={(updates) => applyAndClose(updates, onApplyFilter, close)}
         />

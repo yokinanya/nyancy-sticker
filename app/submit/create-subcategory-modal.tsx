@@ -7,13 +7,13 @@ import type { Category } from "@/lib/types";
 import { createSubcategoryForSubmit } from "./actions";
 
 interface Props {
-  parentId: string;
+  characterId: string;
   parentName: string;
   onClose: () => void;
   onCreated: (cat: Category) => void;
 }
 
-export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreated }: Props) {
+export function CreateSubcategoryModal({ characterId, parentName, onClose, onCreated }: Props) {
   const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
   const [id, setId] = useState("");
@@ -23,14 +23,19 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
   const submit = () => {
     setError(null);
     const fd = new FormData();
-    fd.set("parentId", parentId);
+    fd.set("characterId", characterId);
     fd.set("categoryId", id);
     fd.set("categoryName", name);
     startTransition(async () => {
       try {
         const result = await createSubcategoryForSubmit(fd);
         feedback.success(`已创建分类：${result.name}`);
-        onCreated({ id: result.id, name: result.name, parentId });
+        onCreated({
+          id: result.id,
+          name: result.name,
+          slug: result.slug,
+          characterId: result.characterId,
+        });
       } catch (e) {
         const message = e instanceof Error ? e.message : "创建失败。";
         setError(message);
@@ -63,7 +68,7 @@ export function CreateSubcategoryModal({ parentId, parentName, onClose, onCreate
                     className="field-control bg-content1 px-3"
                   />
                   <span className="text-[10px] text-default-400">
-                    字母数字下划线短横线，长度 2-32。最终 ID 会拼成「{parentId}_{id || "..."}」。
+                    字母数字下划线短横线，长度 2-32。同一角色下不能重复。
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">

@@ -12,10 +12,16 @@ export interface Sticker {
   ext: StickerExt;
 }
 
+export interface Character {
+  id: string;
+  name: string;
+}
+
 export interface Category {
   id: string;
   name: string;
-  parentId?: string;
+  slug: string;
+  characterId: string;
 }
 
 export interface Manifest {

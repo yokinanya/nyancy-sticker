@@ -18,9 +18,6 @@ export async function approveSubmission(formData: FormData): Promise<void> {
 
   const found = await db.query.categories.findFirst({ where: eq(categories.id, category) });
   if (!found) throw new Error(`分类不存在：${category}`);
-  if (!found.parentId) {
-    throw new Error("不允许将贴纸挂到角色上，请选具体子分类。");
-  }
 
   const result = await db
     .update(stickers)

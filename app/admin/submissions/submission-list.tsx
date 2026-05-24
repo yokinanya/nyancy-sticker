@@ -5,7 +5,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Input } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import { CategorySelect } from "@/app/admin/category-select";
 import { approveSubmission, rejectSubmission } from "./actions";
 
@@ -35,20 +35,29 @@ interface Submission {
 interface Props {
   submissions: readonly Submission[];
   categories: readonly Category[];
+  characters: readonly Character[];
 }
 
-export function SubmissionList({ submissions, categories }: Props) {
+export function SubmissionList({ submissions, categories, characters }: Props) {
   if (submissions.length === 0) return <p className="text-default-500">暂无待审核投稿。</p>;
   return (
     <div className="flex flex-col gap-4">
       {submissions.map((submission) => (
-        <SubmissionCard key={submission.id} submission={submission} categories={categories} />
+        <SubmissionCard key={submission.id} submission={submission} categories={categories} characters={characters} />
       ))}
     </div>
   );
 }
 
-function SubmissionCard({ submission, categories }: { submission: Submission; categories: readonly Category[] }) {
+function SubmissionCard({
+  submission,
+  categories,
+  characters,
+}: {
+  submission: Submission;
+  categories: readonly Category[];
+  characters: readonly Character[];
+}) {
   const router = useRouter();
   const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
@@ -70,6 +79,7 @@ function SubmissionCard({ submission, categories }: { submission: Submission; ca
         <div className="flex min-w-0 flex-col gap-2">
           <SubmissionFields
             categories={categories}
+            characters={characters}
             character={character}
             name={name}
             reason={reason}
@@ -113,8 +123,7 @@ function SubmissionPreview({ submission }: { submission: Submission }) {
 }
 
 function SubmissionFields(props: SubmissionFieldsProps) {
-  const topLevels = props.categories.filter((item) => !item.parentId);
-  const subCategories = props.categories.filter((item) => item.parentId === props.character);
+  const subCategories = props.categories.filter((item) => item.characterId === props.character);
   return (
     <>
       <Field label="名字">
@@ -122,7 +131,14 @@ function SubmissionFields(props: SubmissionFieldsProps) {
       </Field>
       <div className="grid gap-2 sm:grid-cols-2">
         <Field label="角色">
-          <CategorySelect categories={topLevels} value={props.character} onChange={props.setCharacter} />
+          <CategorySelect
+            categories={props.characters}
+            value={props.character}
+            onChange={(value) => {
+              props.setCharacter(value);
+              props.setSubCategory("");
+            }}
+          />
         </Field>
         <Field label="子分类">
           <CategorySelect categories={subCategories} value={props.subCategory} onChange={props.setSubCategory} />
@@ -245,13 +261,14 @@ function rejectionFormData(options: { submission: Submission; reason: string }) 
 function initialSelection(categoryId: string, categories: readonly Category[]) {
   const category = categories.find((item) => item.id === categoryId);
   return {
-    character: category?.parentId ?? categoryId,
-    subCategory: category?.parentId ? categoryId : "",
+    character: category?.characterId ?? "",
+    subCategory: category ? categoryId : "",
   };
 }
 
 interface SubmissionFieldsProps {
   categories: readonly Category[];
+  characters: readonly Character[];
   character: string;
   name: string;
   reason: string;

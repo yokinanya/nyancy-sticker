@@ -18,7 +18,7 @@ async function main(): Promise<void> {
 
   for (const row of rows) {
     const key = previewKey(
-      { id: row.categoryId, parentId: row.parentId },
+      { characterId: row.characterId, slug: row.slug },
       row.hash,
       previewExtFor(row.ext),
     );
@@ -38,8 +38,8 @@ async function loadRows() {
       src: stickers.src,
       hash: stickers.hash,
       ext: stickers.ext,
-      categoryId: stickers.categoryId,
-      parentId: categories.parentId,
+      characterId: categories.characterId,
+      slug: categories.slug,
     })
     .from(stickers)
     .innerJoin(categories, eq(stickers.categoryId, categories.id))

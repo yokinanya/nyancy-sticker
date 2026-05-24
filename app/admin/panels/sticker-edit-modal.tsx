@@ -5,12 +5,13 @@ import { Button, Modal } from "@/components/ui/heroui-compat";
 import { bulkUpdateStickers, updateSticker } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
 import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import { StickerEditWorkspace } from "./sticker-edit-workspace";
 
 interface StickerEditModalProps {
   sticker: AdminStickerRow;
   categories: readonly Category[];
+  characters: readonly Character[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -32,7 +33,7 @@ export interface StickerEditActions {
   setTags: (value: readonly string[]) => void;
 }
 
-export function StickerEditModal({ sticker, categories, onClose, onSaved }: StickerEditModalProps) {
+export function StickerEditModal({ sticker, categories, characters, onClose, onSaved }: StickerEditModalProps) {
   const [pending, startTransition] = useTransition();
   const feedback = useFeedback();
   const initialSelection = useMemo(() => getInitialSelection(sticker, categories), [categories, sticker]);
@@ -81,6 +82,7 @@ export function StickerEditModal({ sticker, categories, onClose, onSaved }: Stic
                 <StickerEditWorkspace
                   actions={actions}
                   categories={categories}
+                  characters={characters}
                   state={state}
                   sticker={sticker}
                 />
@@ -112,8 +114,8 @@ export function StickerEditModal({ sticker, categories, onClose, onSaved }: Stic
 function getInitialSelection(sticker: AdminStickerRow, categories: readonly Category[]) {
   const category = categories.find((item) => item.id === sticker.categoryId);
   return {
-    character: category?.parentId ?? sticker.categoryId,
-    subCategory: category?.parentId ? sticker.categoryId : "",
+    character: category?.characterId ?? "",
+    subCategory: category ? sticker.categoryId : "",
   };
 }
 

@@ -1,12 +1,16 @@
 import { requireUser } from "@/lib/auth-helpers";
 import { listAllCategories } from "@/lib/queries/categories";
+import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
 import { BatchUploadForm } from "@/components/batch-upload-form";
 
 export const metadata = { title: "投稿表情包" };
 
 export default async function SubmitPage() {
   await requireUser();
-  const categories = await listAllCategories();
+  const [categories, characters] = await Promise.all([
+    listAllCategories(),
+    listCachedCharactersWithCounts(),
+  ]);
   return (
     <div className="motion-page page-shell flex max-w-3xl flex-col gap-4">
       <section className="toolbar p-3">
@@ -17,6 +21,7 @@ export default async function SubmitPage() {
       </section>
       <BatchUploadForm
         categories={categories}
+        characters={characters}
         endpoint="/api/submit"
         submitLabel="开始上传"
         allowCreateSubcategory

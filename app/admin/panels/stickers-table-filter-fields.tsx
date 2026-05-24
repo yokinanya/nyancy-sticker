@@ -2,8 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Autocomplete, Button, Input, ListBox, Select } from "@/components/ui/heroui-compat";
-import { categoryLabel } from "@/lib/categories";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import { STATUS_LABEL } from "./stickers-table-parts";
 import type { StickerFilterUpdates, StickerTableFilters } from "./stickers-table-query";
 
@@ -63,18 +62,19 @@ export function StatusFilterContent({
 
 export function CategoryFilterContent({
   categories,
+  characters,
   filters,
   onApply,
 }: {
   categories: readonly Category[];
+  characters: readonly Character[];
   filters: StickerTableFilters;
   onApply: (updates: StickerFilterUpdates) => void;
 }) {
   const [character, setCharacter] = useState(filters.character);
   const [category, setCategory] = useState(filters.category);
-  const topLevels = useMemo(() => categories.filter((item) => !item.parentId), [categories]);
   const children = useMemo(
-    () => categories.filter((item) => item.parentId === character),
+    () => categories.filter((item) => item.characterId === character),
     [categories, character],
   );
 
@@ -83,7 +83,7 @@ export function CategoryFilterContent({
       <Field label="角色">
         <CategoryAutocomplete
           value={character}
-          options={[{ id: "", name: "全部角色" }, ...topLevels]}
+          options={[{ id: "", name: "全部角色" }, ...characters]}
           onChange={(value) => {
             setCharacter(value);
             setCategory("");
@@ -127,7 +127,7 @@ function CategoryAutocomplete({
 }: {
   isDisabled?: boolean;
   onChange: (value: string) => void;
-  options: readonly Category[];
+  options: readonly (Category | Character)[];
   value: string;
 }) {
   const [query, setQuery] = useState("");
@@ -142,8 +142,8 @@ function CategoryAutocomplete({
         <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索..." />
         <ListBox className="mt-2 max-h-48 overflow-auto">
           {filtered.map((option) => (
-            <ListBox.Item key={option.id} id={option.id} textValue={categoryLabel(option)} className="listbox-option">
-              {categoryLabel(option)}
+            <ListBox.Item key={option.id} id={option.id} textValue={optionLabel(option)} className="listbox-option">
+              {optionLabel(option)}
             </ListBox.Item>
           ))}
         </ListBox>
@@ -188,11 +188,15 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   );
 }
 
-function filterCategories(options: readonly Category[], query: string) {
+function filterCategories(options: readonly (Category | Character)[], query: string) {
   const text = query.trim().toLowerCase();
   if (!text) return options;
   return options.filter((option) => {
-    const label = categoryLabel(option).toLowerCase();
+    const label = optionLabel(option).toLowerCase();
     return label.includes(text) || option.id.toLowerCase().includes(text);
   });
+}
+
+function optionLabel(option: Category | Character) {
+  return "slug" in option ? `${option.name} (${option.slug})` : option.name;
 }

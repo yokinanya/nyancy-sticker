@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Autocomplete, Button, Chip, Input, ListBox, Select } from "@/components/ui/heroui-compat";
 import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import type { StickerEditActions, StickerEditState } from "./sticker-edit-modal";
 
 const STATUS_OPTIONS: readonly { value: StickerStatus; label: string }[] = [
@@ -16,14 +16,14 @@ const STATUS_OPTIONS: readonly { value: StickerStatus; label: string }[] = [
 interface WorkspaceProps {
   actions: StickerEditActions;
   categories: readonly Category[];
+  characters: readonly Character[];
   state: StickerEditState;
   sticker: AdminStickerRow;
 }
 
-export function StickerEditWorkspace({ actions, categories, state, sticker }: WorkspaceProps) {
-  const topLevels = useMemo(() => categories.filter((item) => !item.parentId), [categories]);
+export function StickerEditWorkspace({ actions, categories, characters, state, sticker }: WorkspaceProps) {
   const subCategories = useMemo(
-    () => categories.filter((item) => item.parentId === state.character),
+    () => categories.filter((item) => item.characterId === state.character),
     [categories, state.character],
   );
 
@@ -34,7 +34,7 @@ export function StickerEditWorkspace({ actions, categories, state, sticker }: Wo
         actions={actions}
         state={state}
         subCategories={subCategories}
-        topLevels={topLevels}
+        topLevels={characters}
       />
     </div>
   );
@@ -74,7 +74,7 @@ function StickerEditForm({
   actions: StickerEditActions;
   state: StickerEditState;
   subCategories: readonly Category[];
-  topLevels: readonly Category[];
+  topLevels: readonly Character[];
 }) {
   return (
     <div className="grid gap-3">
@@ -106,11 +106,11 @@ function CategoryFields({
   actions: StickerEditActions;
   state: StickerEditState;
   subCategories: readonly Category[];
-  topLevels: readonly Category[];
+  topLevels: readonly Character[];
 }) {
   const subCategoryOptions = [
     { value: "__placeholder", label: subCategories.length === 0 ? "（无子分类）" : "请选择" },
-    ...subCategories.map((item) => ({ value: item.id, label: item.name })),
+    ...subCategories.map((item) => ({ value: item.id, label: `${item.name} (${item.slug})` })),
   ];
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -276,7 +276,7 @@ function uniqueTags(tags: readonly string[]) {
 
 function categoryDisplay(categories: readonly Category[], categoryId: string) {
   const category = categories.find((item) => item.id === categoryId);
-  return category ? `${category.name} (${category.id})` : categoryId;
+  return category ? `${category.name} (${category.slug})` : categoryId;
 }
 
 function submitterName(sticker: AdminStickerRow) {

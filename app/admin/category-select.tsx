@@ -2,11 +2,15 @@
 
 import { Autocomplete, Input, ListBox } from "@/components/ui/heroui-compat";
 import { useMemo, useState } from "react";
-import type { Category } from "@/lib/types";
-import { categoryLabel } from "@/lib/categories";
+
+interface SelectOption {
+  id: string;
+  name: string;
+  slug?: string;
+}
 
 interface Props {
-  categories: readonly Category[];
+  categories: readonly SelectOption[];
   value: string;
   name?: string;
   onChange?: (value: string) => void;
@@ -21,7 +25,7 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
     const text = query.trim().toLowerCase();
     if (!text) return categories;
     return categories.filter((category) => {
-      const label = categoryLabel(category).toLowerCase();
+      const label = optionLabel(category).toLowerCase();
       return label.includes(text) || category.id.toLowerCase().includes(text);
     });
   }, [categories, query]);
@@ -61,10 +65,10 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
                 <ListBox.Item
                   key={category.id}
                   id={category.id}
-                  textValue={categoryLabel(category)}
+                  textValue={optionLabel(category)}
                   className="listbox-option"
                 >
-                  {categoryLabel(category)}
+                  {optionLabel(category)}
                 </ListBox.Item>
               ))}
             </ListBox>
@@ -73,4 +77,8 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
       </Autocomplete>
     </>
   );
+}
+
+function optionLabel(option: SelectOption) {
+  return option.slug ? `${option.name} (${option.slug})` : option.name;
 }

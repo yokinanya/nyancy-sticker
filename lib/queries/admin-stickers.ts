@@ -1,5 +1,4 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { categories, stickers, users } from "@/drizzle/schema";
 
@@ -82,7 +81,6 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       })
       .from(stickers)
       .leftJoin(categories, eq(stickers.categoryId, categories.id))
-      .leftJoin(parentCategories, eq(categories.parentId, parentCategories.id))
       .leftJoin(users, eq(stickers.submittedById, users.id))
       .where(where)
       .orderBy(...orderBy)
@@ -92,7 +90,6 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       .select({ c: count() })
       .from(stickers)
       .leftJoin(categories, eq(stickers.categoryId, categories.id))
-      .leftJoin(parentCategories, eq(categories.parentId, parentCategories.id))
       .leftJoin(users, eq(stickers.submittedById, users.id))
       .where(where),
   ]);
@@ -107,8 +104,6 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
     pageCount,
   };
 }
-
-const parentCategories = alias(categories, "parent_category");
 
 async function buildWhere(opts: ListOptions) {
   const conditions: SQL[] = [];
@@ -129,8 +124,12 @@ async function addCategoryCondition(conditions: SQL[], opts: ListOptions) {
   const subRows = await db
     .select({ id: categories.id })
     .from(categories)
-    .where(eq(categories.parentId, opts.characterId));
-  conditions.push(inArray(stickers.categoryId, [opts.characterId, ...subRows.map((r) => r.id)]));
+    .where(eq(categories.characterId, opts.characterId));
+  if (subRows.length === 0) {
+    conditions.push(sql`false`);
+    return;
+  }
+  conditions.push(inArray(stickers.categoryId, subRows.map((r) => r.id)));
 }
 
 function buildTextSearchCondition(text: string) {
@@ -163,8 +162,8 @@ function buildOrderBy(sort: ListOptions["sort"]) {
   if (sort === "submitter-desc") return [desc(users.githubLogin), desc(users.name)];
   if (sort === "newest") return [desc(stickers.submittedAt)];
   return [
-    asc(sql`COALESCE(${parentCategories.id}, ${categories.id})`),
-    asc(stickers.categoryId),
+    asc(categories.characterId),
+    asc(categories.slug),
     desc(stickers.submittedAt),
   ];
 }

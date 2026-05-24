@@ -3,36 +3,34 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@/components/ui/heroui-compat";
-import { addCategory, updateCategory } from "@/app/admin/actions";
+import { addCategory, addCharacter, updateCategory, updateCharacter } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
-import type { CategoryWithCount } from "@/lib/queries/categories";
+import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/categories";
 import { CategoryDetail } from "./category-detail";
 import type { SubmitHandler } from "./category-manager-types";
 import { RoleList } from "./category-role-list";
 
 interface Props {
   categories: readonly CategoryWithCount[];
+  characters: readonly CharacterWithCount[];
 }
 
-type Draft = {
-  mode: "add-role" | "add-subcategory" | "edit";
-  parent: CategoryWithCount | null;
-  target: CategoryWithCount | null;
-};
+type Draft =
+  | { mode: "add-character"; character: null; category: null }
+  | { mode: "edit-character"; character: CharacterWithCount; category: null }
+  | { mode: "add-category"; character: CharacterWithCount; category: null }
+  | { mode: "edit-category"; character: null; category: CategoryWithCount };
 
-export function CategoryManager({ categories }: Props) {
+export function CategoryManager({ categories, characters }: Props) {
   const router = useRouter();
   const feedback = useFeedback();
   const [pending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [query, setQuery] = useState("");
-
-  const topLevels = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
-  const visibleRoles = useMemo(() => filterRoles(categories, topLevels, query), [categories, query, topLevels]);
-  const selected =
-    topLevels.find((c) => c.id === selectedId) ?? visibleRoles[0] ?? topLevels[0] ?? null;
-  const subcategories = selected ? categories.filter((c) => c.parentId === selected.id) : [];
+  const visibleRoles = useMemo(() => filterRoles(categories, characters, query), [categories, characters, query]);
+  const selected = characters.find((c) => c.id === selectedId) ?? visibleRoles[0] ?? characters[0] ?? null;
+  const subcategories = selected ? categories.filter((c) => c.characterId === selected.id) : [];
 
   const submit: SubmitHandler = (action, fd, done) => {
     startTransition(async () => {
@@ -55,19 +53,20 @@ export function CategoryManager({ categories }: Props) {
           categories={categories}
           query={query}
           selectedId={selected?.id ?? null}
-          onAddRole={() => setDraft({ mode: "add-role", parent: null, target: null })}
+          onAddRole={() => setDraft({ mode: "add-character", character: null, category: null })}
           onQueryChange={setQuery}
           onSelect={setSelectedId}
-          totalRoles={topLevels.length}
+          totalRoles={characters.length}
         />
         <CategoryDetail
           selected={selected}
           subcategories={subcategories}
           pending={pending}
           onAddSubcategory={() =>
-            selected && setDraft({ mode: "add-subcategory", parent: selected, target: null })
+            selected && setDraft({ mode: "add-category", character: selected, category: null })
           }
-          onEdit={(target) => setDraft({ mode: "edit", parent: null, target })}
+          onEditCategory={(category) => setDraft({ mode: "edit-category", character: null, category })}
+          onEditCharacter={(character) => setDraft({ mode: "edit-character", character, category: null })}
           onSubmit={submit}
         />
       </div>
@@ -97,18 +96,14 @@ function CategoryEditorModal({
   onCreated: (id: string) => void;
   onSubmit: SubmitHandler;
 }) {
-  const target = draft.target;
-  const [id, setId] = useState(target?.id ?? "");
-  const [name, setName] = useState(target?.name ?? "");
+  const [id, setId] = useState(initialId(draft));
+  const [name, setName] = useState(initialName(draft));
   const title = getDraftTitle(draft);
 
   const save = () => {
     const fd = new FormData();
-    fd.set("categoryId", id);
-    fd.set("categoryName", name);
-    fd.set("parentId", draft.parent?.id ?? target?.parentId ?? "");
-    onSubmit(target ? updateCategory : addCategory, fd, `${title}：${id}`);
-    if (!target && draft.mode === "add-role") onCreated(id);
+    if (draft.mode.includes("character")) saveCharacter(draft, fd, id, name, onSubmit, onCreated);
+    else saveCategory(draft, fd, id, name, onSubmit);
   };
 
   return (
@@ -117,21 +112,19 @@ function CategoryEditorModal({
         <Modal.Container>
           <Modal.Dialog className="motion-panel modal-surface w-full max-w-md">
             <Modal.CloseTrigger className="motion-press absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-default-500 hover:bg-default-100 hover:text-default-800">
-              <span aria-hidden="true">
-                ×
-              </span>
+              <span aria-hidden="true">×</span>
             </Modal.CloseTrigger>
             <Modal.Header>
               <Modal.Heading>{title}</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
               <div className="grid gap-3">
-                <Field label="ID">
+                <Field label={draft.mode.includes("character") ? "角色 ID" : "分类 ID（slug）"}>
                   <Input
                     value={id}
                     onChange={(e) => setId(e.target.value)}
                     placeholder="id（slug）"
-                    disabled={Boolean(target)}
+                    disabled={draft.mode.startsWith("edit-character")}
                     className="field-control px-3"
                   />
                 </Field>
@@ -160,29 +153,73 @@ function CategoryEditorModal({
   );
 }
 
+function initialId(draft: Draft) {
+  if (draft.mode === "edit-character") return draft.character.id;
+  if (draft.mode === "edit-category") return draft.category.slug;
+  return "";
+}
+
+function initialName(draft: Draft) {
+  return draft.character?.name ?? draft.category?.name ?? "";
+}
+
+function saveCharacter(
+  draft: Draft,
+  fd: FormData,
+  id: string,
+  name: string,
+  onSubmit: SubmitHandler,
+  onCreated: (id: string) => void,
+) {
+  fd.set("characterId", id);
+  fd.set("characterName", name);
+  onSubmit(draft.mode === "edit-character" ? updateCharacter : addCharacter, fd, `${getDraftTitle(draft)}：${id}`);
+  if (draft.mode === "add-character") onCreated(id);
+}
+
+function saveCategory(draft: Draft, fd: FormData, slug: string, name: string, onSubmit: SubmitHandler) {
+  const categoryId = draft.category?.id ?? "";
+  const characterId = draft.character?.id ?? draft.category?.characterId ?? "";
+  fd.set("categoryId", categoryId || slug);
+  fd.set("categorySlug", slug);
+  fd.set("categoryName", name);
+  fd.set("characterId", characterId);
+  onSubmit(draft.mode === "edit-category" ? updateCategory : addCategory, fd, `${getDraftTitle(draft)}：${slug}`);
+}
+
 function getDraftTitle(draft: Draft) {
-  if (draft.mode === "add-role") return "新增角色";
-  if (draft.mode === "add-subcategory") return "新增分类";
-  return draft.target?.parentId ? "编辑分类" : "编辑角色";
+  if (draft.mode === "add-character") return "新增角色";
+  if (draft.mode === "add-category") return "新增分类";
+  return draft.mode === "edit-category" ? "编辑分类" : "编辑角色";
 }
 
 function filterRoles(
   categories: readonly CategoryWithCount[],
-  roles: readonly CategoryWithCount[],
+  roles: readonly CharacterWithCount[],
   query: string,
 ) {
   const text = query.trim().toLowerCase();
   if (!text) return roles;
   const matchedRoleIds = new Set<string>();
   categories.forEach((category) => {
-    if (!matchesCategory(category, text)) return;
-    matchedRoleIds.add(category.parentId ?? category.id);
+    if (matchesCategory(category, text)) matchedRoleIds.add(category.characterId);
+  });
+  roles.forEach((role) => {
+    if (matchesRole(role, text)) matchedRoleIds.add(role.id);
   });
   return roles.filter((role) => matchedRoleIds.has(role.id));
 }
 
+function matchesRole(role: CharacterWithCount, text: string) {
+  return role.name.toLowerCase().includes(text) || role.id.toLowerCase().includes(text);
+}
+
 function matchesCategory(category: CategoryWithCount, text: string) {
-  return category.name.toLowerCase().includes(text) || category.id.toLowerCase().includes(text);
+  return (
+    category.name.toLowerCase().includes(text) ||
+    category.slug.toLowerCase().includes(text) ||
+    category.id.toLowerCase().includes(text)
+  );
 }
 
 function Field({ children, label }: { children: React.ReactNode; label: string }) {

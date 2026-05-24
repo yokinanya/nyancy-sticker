@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { Button, Chip } from "@/components/ui/heroui-compat";
-import { deleteCategory } from "@/app/admin/actions";
-import type { CategoryWithCount } from "@/lib/queries/categories";
+import { deleteCategory, deleteCharacter } from "@/app/admin/actions";
+import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/categories";
 import type { SubmitHandler } from "./category-manager-types";
 
 interface CategoryDetailProps {
-  selected: CategoryWithCount | null;
+  selected: CharacterWithCount | null;
   subcategories: readonly CategoryWithCount[];
   pending: boolean;
   onAddSubcategory: () => void;
-  onEdit: (category: CategoryWithCount) => void;
+  onEditCategory: (category: CategoryWithCount) => void;
+  onEditCharacter: (character: CharacterWithCount) => void;
   onSubmit: SubmitHandler;
 }
 
@@ -20,7 +21,8 @@ export function CategoryDetail({
   subcategories,
   pending,
   onAddSubcategory,
-  onEdit,
+  onEditCategory,
+  onEditCharacter,
   onSubmit,
 }: CategoryDetailProps) {
   if (!selected) {
@@ -32,11 +34,12 @@ export function CategoryDetail({
       <RoleOverview
         role={selected}
         childCount={subcategories.length}
-        totalCount={sumCounts(selected, subcategories)}
+        totalCount={selected.count}
         onAddSubcategory={onAddSubcategory}
-        onEdit={() => onEdit(selected)}
+        onEdit={() => onEditCharacter(selected)}
+        onSubmit={onSubmit}
       />
-      <SubcategoryTable items={subcategories} pending={pending} onEdit={onEdit} onSubmit={onSubmit} />
+      <SubcategoryTable items={subcategories} pending={pending} onEdit={onEditCategory} onSubmit={onSubmit} />
     </section>
   );
 }
@@ -47,13 +50,22 @@ function RoleOverview({
   totalCount,
   onAddSubcategory,
   onEdit,
+  onSubmit,
 }: {
-  role: CategoryWithCount;
+  role: CharacterWithCount;
   childCount: number;
   totalCount: number;
   onAddSubcategory: () => void;
   onEdit: () => void;
+  onSubmit: SubmitHandler;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const onDelete = () => {
+    const fd = new FormData();
+    fd.set("characterId", role.id);
+    onSubmit(deleteCharacter, fd, `已删除：${role.id}`);
+    setConfirmingDelete(false);
+  };
   return (
     <div className="admin-panel p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -70,6 +82,15 @@ function RoleOverview({
           <Button size="sm" variant="ghost" onPress={onEdit} className="motion-press">
             编辑角色
           </Button>
+          {confirmingDelete ? (
+            <Button size="sm" variant="ghost" onPress={onDelete} className="motion-press border border-danger/30 text-danger">
+              确认删除
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" onPress={() => setConfirmingDelete(true)} className="motion-press">
+              删除角色
+            </Button>
+          )}
           <Button size="sm" variant="primary" onPress={onAddSubcategory} className="motion-press">
             新增分类
           </Button>
@@ -167,7 +188,7 @@ function SubcategoryRow({
   return (
     <tr className="motion-list-item border-b border-default-100 last:border-0 hover:bg-primary/6">
       <td className="p-3 font-medium">{category.name}</td>
-      <td className="p-3 font-mono text-xs text-default-500">{category.id}</td>
+      <td className="p-3 font-mono text-xs text-default-500">{category.slug}</td>
       <td className="p-3 text-default-500">{category.count} 张</td>
       <td className="p-3 text-default-500">{creatorName(category)}</td>
       <td className="p-3 text-default-500">{formatDate(category.createdAt)}</td>
@@ -217,7 +238,7 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function creatorName(category: CategoryWithCount) {
+function creatorName(category: CategoryWithCount | CharacterWithCount) {
   return category.createdByLogin ? `@${category.createdByLogin}` : (category.createdByName ?? "-");
 }
 
@@ -225,6 +246,3 @@ function formatDate(date: Date) {
   return new Date(date).toLocaleDateString("zh-CN");
 }
 
-function sumCounts(role: CategoryWithCount, subcategories: readonly CategoryWithCount[]) {
-  return subcategories.reduce((sum, category) => sum + category.count, role.count);
-}

@@ -112,15 +112,15 @@ pnpm build
 
 分类规则：
 
-- 一级分类表示角色，没有 `parentId`。
-- 二级分类表示合集，`parentId` 指向一级分类 id。
-- 只支持两级分类，不支持三级分类。
+- `character` 表表示角色。
+- `category` 表表示角色下的分类，`characterId` 指向角色。
+- 分类的 `slug` 只要求在同一角色下唯一。
 - 表情的 `categoryId` 必须指向已存在的分类 id。
 
 R2 key 规则：
 
 ```text
-stickers/<一级分类id>/<二级分类id>/<hash>.<ext>
+stickers/<角色id>/<分类slug>/<hash>.<ext>
 ```
 
 # 开发指南

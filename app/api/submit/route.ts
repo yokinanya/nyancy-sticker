@@ -29,7 +29,6 @@ export async function POST(request: Request) {
 
     const found = await db.query.categories.findFirst({ where: eq(categories.id, category) });
     if (!found) throw new Error(`分类不存在：${category}`);
-    if (!found.parentId) throw new Error("必须选择具体子分类，不能直接挂到角色下。");
 
     await assertActiveVisualHashesComplete();
     const uploaded = await uploadStickerFile(file, category);

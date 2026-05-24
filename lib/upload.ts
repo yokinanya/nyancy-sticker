@@ -30,7 +30,7 @@ export async function uploadStickerFile(file: File, categoryId: string): Promise
   if (!category) throw new Error(`分类不存在：${categoryId}`);
 
   const info = await inspectImage(file);
-  const ref = { id: category.id, parentId: category.parentId };
+  const ref = { characterId: category.characterId, slug: category.slug };
   const key = stickerKey(ref, info.hash, info.ext);
   const preview = previewKey(ref, info.hash, previewExtFor(info.ext));
   const [src, previewSrc] = await Promise.all([

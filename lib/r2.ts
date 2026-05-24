@@ -1,6 +1,7 @@
 import "server-only";
 
 export {
+  copy,
   exists,
   keyFromUrl,
   publicUrlFor,

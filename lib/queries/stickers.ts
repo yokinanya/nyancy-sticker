@@ -29,16 +29,15 @@ export async function listApprovedStickersByCharacter(
   characterId: string,
 ): Promise<{ stickers: Sticker[]; categories: Category[] }> {
   const allCategories = await db
-    .select({ id: categories.id, name: categories.name, parentId: categories.parentId })
+    .select({
+      id: categories.id,
+      name: categories.name,
+      slug: categories.slug,
+      characterId: categories.characterId,
+    })
     .from(categories)
-    .where(eq(categories.id, characterId))
-    .union(
-      db
-        .select({ id: categories.id, name: categories.name, parentId: categories.parentId })
-        .from(categories)
-        .where(eq(categories.parentId, characterId)),
-    )
-    .orderBy(asc(categories.id));
+    .where(eq(categories.characterId, characterId))
+    .orderBy(asc(categories.slug));
 
   if (allCategories.length === 0) return { stickers: [], categories: [] };
 
@@ -63,7 +62,8 @@ export async function listApprovedStickersByCharacter(
   const cats: Category[] = allCategories.map((c) => ({
     id: c.id,
     name: c.name,
-    ...(c.parentId ? { parentId: c.parentId } : {}),
+    slug: c.slug,
+    characterId: c.characterId,
   }));
 
   return { stickers: stickerRows.map(requirePreviewSrc), categories: cats };
@@ -78,22 +78,22 @@ export async function listCharacterGallery(
 }> {
   const result = await db.execute<CharacterGalleryRow>(sql`
     WITH selected_categories AS (
-      SELECT id, name, "parentId"
+      SELECT id, name, slug, "characterId"
       FROM "category"
-      WHERE id = ${characterId} OR "parentId" = ${characterId}
+      WHERE "characterId" = ${characterId}
     )
     SELECT
       (
         SELECT jsonb_build_object('id', id, 'name', name)
-        FROM selected_categories
-        WHERE id = ${characterId} AND "parentId" IS NULL
+        FROM "character"
+        WHERE id = ${characterId}
         LIMIT 1
       ) AS character,
       COALESCE(
         (
           SELECT jsonb_agg(
-            jsonb_build_object('id', id, 'name', name, 'parentId', "parentId")
-            ORDER BY id ASC
+            jsonb_build_object('id', id, 'name', name, 'slug', slug, 'characterId', "characterId")
+            ORDER BY slug ASC
           )
           FROM selected_categories
         ),
@@ -152,13 +152,15 @@ interface CharacterGalleryRow extends Record<string, unknown> {
 interface RawCategory {
   id: string;
   name: string;
-  parentId: string | null;
+  slug: string;
+  characterId: string;
 }
 
 function normalizeCategory(category: RawCategory): Category {
   return {
     id: category.id,
     name: category.name,
-    ...(category.parentId ? { parentId: category.parentId } : {}),
+    slug: category.slug,
+    characterId: category.characterId,
   };
 }

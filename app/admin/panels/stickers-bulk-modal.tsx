@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Button, Input, Modal, Tag, TagGroup } from "@/components/ui/heroui-compat";
 import { CategorySelect } from "@/app/admin/category-select";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 
 type TagMode = "add-tags" | "remove-tags";
 
 interface Props {
-  topLevels: readonly Category[];
+  topLevels: readonly Character[];
   subCategories: readonly Category[];
   character: string;
   category: string;
@@ -212,7 +212,7 @@ function BulkCategorySection({
   onChangeCharacter: (value: string) => void;
   onRun: (operation: string) => void;
   subCategories: readonly Category[];
-  topLevels: readonly Category[];
+  topLevels: readonly Character[];
 }) {
   return (
     <section className="grid gap-3">

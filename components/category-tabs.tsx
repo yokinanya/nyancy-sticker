@@ -3,11 +3,7 @@
 import { Tabs } from "@/components/ui/heroui-compat";
 import { useMemo } from "react";
 import type { Category } from "@/lib/types";
-import {
-  childCategoryIds,
-  defaultCategoryId,
-  topLevelCategories,
-} from "@/lib/categories";
+import { defaultCategoryId } from "@/lib/categories";
 
 interface Props {
   categories: Category[];
@@ -24,36 +20,18 @@ export function CategoryTabs({
   counts,
   selectedCategory,
   onCategoryChange,
-  hideTopLevel = false,
 }: Props) {
   const defaultCategory = useMemo(() => defaultCategoryId(categories), [categories]);
   const effectiveCategory = isValidCategory(categories, selectedCategory)
     ? selectedCategory
     : defaultCategory;
-  const activeParent = findActiveParent(categories, effectiveCategory);
-  const childIds = activeParent ? childCategoryIds(categories, activeParent.id) : [];
-  const topCategories = useMemo(() => topLevelCategories(categories), [categories]);
-  const childCategories = categories.filter((item) => childIds.includes(item.id));
-  const selectTopCategory = (id: string) => {
-    const firstChildId = childCategoryIds(categories, id)[0];
-    onCategoryChange(firstChildId ?? id);
-  };
 
   return (
     <div className="flex flex-col gap-2">
-      {hideTopLevel ? null : (
-        <CategoryTabGroup
-          ariaLabel="角色"
-          categories={topCategories}
-          counts={counts}
-          selectedKey={activeParent?.id}
-          onSelectionChange={selectTopCategory}
-        />
-      )}
-      {childCategories.length > 0 ? (
+      {categories.length > 0 ? (
         <CategoryTabGroup
           ariaLabel="分类"
-          categories={childCategories}
+          categories={categories}
           counts={counts}
           selectedKey={effectiveCategory}
           onSelectionChange={onCategoryChange}
@@ -102,14 +80,6 @@ function CategoryTab({ category, count }: { category: Category; count: number })
       <span className="category-tab-count">{count}</span>
     </Tabs.Tab>
   );
-}
-
-function findActiveParent(categories: readonly Category[], selected: string | null) {
-  if (!selected) return null;
-  const current = categories.find((category) => category.id === selected);
-  if (!current) return null;
-  if (!current.parentId) return current;
-  return categories.find((category) => category.id === current.parentId) ?? null;
 }
 
 function isValidCategory(categories: readonly Category[], category: string | null) {

@@ -4,6 +4,7 @@ import {
   type StickerStatus,
 } from "@/lib/queries/admin-stickers";
 import { listCachedCategories } from "@/lib/queries/categories";
+import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
 import { StickersTable } from "./stickers-table";
 
 const VALID_STATUS: readonly StickerStatus[] = ["approved", "pending", "rejected"];
@@ -40,7 +41,7 @@ export async function StickersPanel({ searchParams }: Props) {
       DEFAULT_PAGE_SIZE),
   );
 
-  const [result, categories] = await Promise.all([
+  const [result, categories, characters] = await Promise.all([
     listStickersPaginated({
       status: (VALID_STATUS as readonly string[]).includes(status ?? "")
         ? (status as StickerStatus)
@@ -54,6 +55,7 @@ export async function StickersPanel({ searchParams }: Props) {
       pageSize,
     }),
     listCachedCategories(),
+    listCachedCharactersWithCounts(),
   ]);
 
   return (
@@ -61,6 +63,7 @@ export async function StickersPanel({ searchParams }: Props) {
       <StickersTable
         items={result.items}
         categories={categories}
+        characters={characters}
         page={result.page}
         pageCount={result.pageCount}
         pageSize={result.pageSize}

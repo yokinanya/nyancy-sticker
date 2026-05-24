@@ -11,14 +11,16 @@ export async function listAllCategories(): Promise<Category[]> {
     .select({
       id: categories.id,
       name: categories.name,
-      parentId: categories.parentId,
+      slug: categories.slug,
+      characterId: categories.characterId,
     })
     .from(categories)
-    .orderBy(asc(categories.id));
-  return rows.map(({ id, name, parentId }) => ({
+    .orderBy(asc(categories.characterId), asc(categories.slug));
+  return rows.map(({ id, name, slug, characterId }) => ({
     id,
     name,
-    ...(parentId ? { parentId } : {}),
+    slug,
+    characterId,
   }));
 }
 
@@ -31,11 +33,55 @@ export const listCachedCategories = unstable_cache(
 export interface CategoryWithCount {
   id: string;
   name: string;
-  parentId: string | null;
+  slug: string;
+  characterId: string;
+  characterName: string;
   count: number;
   createdAt: Date;
   createdByName: string | null;
   createdByLogin: string | null;
+}
+
+export interface CharacterWithCount {
+  id: string;
+  name: string;
+  count: number;
+  createdAt: Date;
+  createdByName: string | null;
+  createdByLogin: string | null;
+}
+
+export async function listCharactersForCategoryManager(): Promise<CharacterWithCount[]> {
+  const result = await db.execute<{
+    id: string;
+    name: string;
+    count: number;
+    createdAt: Date;
+    createdByName: string | null;
+    createdByLogin: string | null;
+  }>(sql`
+    SELECT
+      ch.id,
+      ch.name,
+      COUNT(s.id)::int AS count,
+      ch."createdAt",
+      u.name AS "createdByName",
+      u."githubLogin" AS "createdByLogin"
+    FROM "character" ch
+    LEFT JOIN "category" c ON c."characterId" = ch.id
+    LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
+    LEFT JOIN "user" u ON ch."createdById" = u.id
+    GROUP BY ch.id, ch.name, ch."createdAt", u.name, u."githubLogin"
+    ORDER BY ch.id ASC
+  `);
+  return result.rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    count: Number(r.count),
+    createdAt: new Date(r.createdAt),
+    createdByName: r.createdByName,
+    createdByLogin: r.createdByLogin,
+  }));
 }
 
 /**
@@ -46,7 +92,9 @@ export async function listCategoriesWithCounts(): Promise<CategoryWithCount[]> {
   const result = await db.execute<{
     id: string;
     name: string;
-    parentId: string | null;
+    slug: string;
+    characterId: string;
+    characterName: string;
     count: number;
     createdAt: Date;
     createdByName: string | null;
@@ -55,21 +103,26 @@ export async function listCategoriesWithCounts(): Promise<CategoryWithCount[]> {
     SELECT
       c.id,
       c.name,
-      c."parentId",
+      c.slug,
+      c."characterId",
+      ch.name AS "characterName",
       COUNT(s.id)::int AS count,
       c."createdAt",
       u.name AS "createdByName",
       u."githubLogin" AS "createdByLogin"
     FROM "category" c
+    INNER JOIN "character" ch ON c."characterId" = ch.id
     LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
     LEFT JOIN "user" u ON c."createdById" = u.id
-    GROUP BY c.id, c.name, c."parentId", c."createdAt", u.name, u."githubLogin"
-    ORDER BY c.id ASC
+    GROUP BY c.id, c.name, c.slug, c."characterId", ch.name, c."createdAt", u.name, u."githubLogin"
+    ORDER BY c."characterId" ASC, c.slug ASC
   `);
   return result.rows.map((r) => ({
     id: r.id,
     name: r.name,
-    parentId: r.parentId,
+    slug: r.slug,
+    characterId: r.characterId,
+    characterName: r.characterName,
     count: Number(r.count),
     createdAt: new Date(r.createdAt),
     createdByName: r.createdByName,

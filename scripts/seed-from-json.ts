@@ -6,7 +6,7 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local", quiet: true });
 
 const { db } = await import("../lib/db.js");
-const { categories, stickers } = await import("../drizzle/schema.js");
+const { categories, characters, stickers } = await import("../drizzle/schema.js");
 
 interface LegacyCategory {
   id: string;
@@ -39,14 +39,20 @@ async function main() {
   console.log(`读取 ${manifest.categories.length} 个分类、${manifest.stickers.length} 张贴纸`);
 
   const parents = manifest.categories.filter((c) => !c.parentId);
+  for (const c of parents) {
+    await db
+      .insert(characters)
+      .values({ id: c.id, name: c.name })
+      .onConflictDoNothing({ target: characters.id });
+  }
   const children = manifest.categories.filter((c) => c.parentId);
-  for (const c of [...parents, ...children]) {
+  for (const c of children) {
     await db
       .insert(categories)
-      .values({ id: c.id, name: c.name, parentId: c.parentId ?? null })
+      .values({ id: c.id, name: c.name, slug: c.id, characterId: c.parentId! })
       .onConflictDoNothing({ target: categories.id });
   }
-  console.log(`✓ categories 写入完成`);
+  console.log(`✓ characters/categories 写入完成`);
 
   let inserted = 0;
   let skipped = 0;

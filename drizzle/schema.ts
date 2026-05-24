@@ -8,7 +8,6 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
@@ -68,20 +67,31 @@ export const verificationTokens = pgTable(
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
 );
 
+export const characters = pgTable("character", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  createdById: text("createdById").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+});
+
 export const categories = pgTable(
   "category",
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    parentId: text("parentId").references((): AnyPgColumn => categories.id, {
-      onDelete: "restrict",
-    }),
+    slug: text("slug").notNull(),
+    characterId: text("characterId")
+      .notNull()
+      .references(() => characters.id, { onDelete: "restrict" }),
     createdById: text("createdById").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (cat) => [index("category_parent_idx").on(cat.parentId)],
+  (cat) => [
+    index("category_character_idx").on(cat.characterId),
+    uniqueIndex("category_character_slug_idx").on(cat.characterId, cat.slug),
+  ],
 );
 
 export const stickers = pgTable(
@@ -152,6 +162,7 @@ export const stickerSimilarityDecisions = pgTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type Character = typeof characters.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Sticker = typeof stickers.$inferSelect;
 export type NewSticker = typeof stickers.$inferInsert;

@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -81,6 +82,20 @@ export async function upload(key: string, body: Buffer, ext: StickerExt): Promis
 
 export async function uploadWebp(key: string, body: Buffer): Promise<string> {
   return putObject(key, body, "image/webp");
+}
+
+export async function copy(sourceKey: string, targetKey: string): Promise<string> {
+  const { bucket } = r2Config();
+  await client().send(
+    new CopyObjectCommand({
+      Bucket: bucket,
+      CopySource: `${bucket}/${encodeURI(sourceKey)}`,
+      Key: targetKey,
+      CacheControl: "public, max-age=31536000, immutable",
+      MetadataDirective: "COPY",
+    }),
+  );
+  return publicUrlFor(targetKey);
 }
 
 async function putObject(key: string, body: Buffer, contentType: string): Promise<string> {

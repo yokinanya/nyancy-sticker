@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories, stickers } from "@/drizzle/schema";
+import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
@@ -145,15 +145,16 @@ export async function updateSticker(formData: FormData): Promise<void> {
 
 export async function addCategory(formData: FormData): Promise<void> {
   const session = await requireEditor();
-  const rawId = readText(formData, "categoryId");
-  const parentId = await readParentId(formData, rawId);
-  const id = buildCategoryId(rawId, parentId);
-  const exists = await db.query.categories.findFirst({ where: eq(categories.id, id) });
-  if (exists) throw new Error(`分类已存在：${id}`);
+  const id = crypto.randomUUID();
+  const characterId = readText(formData, "characterId");
+  const slug = readText(formData, "categoryId");
+  await ensureCharacterExists(characterId);
+  await ensureCategorySlugAvailable(characterId, slug);
   await db.insert(categories).values({
     id,
     name: readText(formData, "categoryName"),
-    parentId: parentId ?? null,
+    slug,
+    characterId,
     createdById: session.user.id,
   });
   revalidateAdminPages();
@@ -162,31 +163,58 @@ export async function addCategory(formData: FormData): Promise<void> {
 export async function updateCategory(formData: FormData): Promise<void> {
   await requireEditor();
   const id = readText(formData, "categoryId");
-  const parentId = await readParentId(formData, id);
+  const characterId = readText(formData, "characterId");
+  const slug = readText(formData, "categorySlug");
+  await ensureCharacterExists(characterId);
+  await ensureCategorySlugAvailable(characterId, slug, id);
   await db
     .update(categories)
-    .set({ name: readText(formData, "categoryName"), parentId: parentId ?? null })
+    .set({ name: readText(formData, "categoryName"), slug, characterId })
     .where(eq(categories.id, id));
+  revalidateAdminPages();
+}
+
+export async function addCharacter(formData: FormData): Promise<void> {
+  const session = await requireEditor();
+  const id = readText(formData, "characterId");
+  const exists = await db.query.characters.findFirst({ where: eq(characters.id, id) });
+  if (exists) throw new Error(`角色已存在：${id}`);
+  await db.insert(characters).values({
+    id,
+    name: readText(formData, "characterName"),
+    createdById: session.user.id,
+  });
+  revalidateAdminPages();
+}
+
+export async function updateCharacter(formData: FormData): Promise<void> {
+  await requireEditor();
+  const id = readText(formData, "characterId");
+  await db.update(characters).set({ name: readText(formData, "characterName") }).where(eq(characters.id, id));
   revalidateAdminPages();
 }
 
 export async function deleteCategory(formData: FormData): Promise<void> {
   await requireEditor();
   const id = readText(formData, "categoryId");
-  const child = await db.query.categories.findFirst({ where: eq(categories.parentId, id) });
-  if (child) throw new Error(`该角色下还有分类，请先删除子分类：${id}`);
   const used = await db.query.stickers.findFirst({ where: eq(stickers.categoryId, id) });
   if (used) throw new Error(`分类仍被使用，不能删除：${id}`);
   await db.delete(categories).where(eq(categories.id, id));
   revalidateAdminPages();
 }
 
+export async function deleteCharacter(formData: FormData): Promise<void> {
+  await requireEditor();
+  const id = readText(formData, "characterId");
+  const child = await db.query.categories.findFirst({ where: eq(categories.characterId, id) });
+  if (child) throw new Error(`该角色下还有分类，请先删除子分类：${id}`);
+  await db.delete(characters).where(eq(characters.id, id));
+  revalidateAdminPages();
+}
+
 async function ensureSubcategoryExists(id: string): Promise<void> {
   const found = await db.query.categories.findFirst({ where: eq(categories.id, id) });
   if (!found) throw new Error(`分类不存在：${id}`);
-  if (!found.parentId) {
-    throw new Error("不允许将贴纸挂到角色上，请选具体子分类。");
-  }
 }
 
 function readSelectedIds(formData: FormData): Set<string> {
@@ -209,22 +237,18 @@ function readStickerStatus(formData: FormData): "approved" | "pending" | "reject
   throw new Error(`无效状态：${status}`);
 }
 
-async function readParentId(formData: FormData, id: string): Promise<string | undefined> {
-  const value = formData.get("parentId");
-  if (typeof value !== "string" || value.trim().length === 0) return undefined;
-  const parent = await db.query.categories.findFirst({
-    where: eq(categories.id, value.trim()),
-  });
-  if (!parent) throw new Error(`父级（角色）不存在：${value}`);
-  if (parent.id === id) throw new Error("不能把自己设为父级。");
-  if (parent.parentId) throw new Error("分类层级只支持两层（角色 → 分类）。");
-  return parent.id;
+async function ensureCharacterExists(id: string): Promise<void> {
+  const found = await db.query.characters.findFirst({ where: eq(characters.id, id) });
+  if (!found) throw new Error(`角色不存在：${id}`);
 }
 
-function buildCategoryId(rawId: string, parentId: string | undefined) {
-  if (!parentId) return rawId;
-  const prefix = `${parentId}_`;
-  return rawId.startsWith(prefix) ? rawId : `${prefix}${rawId}`;
+async function ensureCategorySlugAvailable(characterId: string, slug: string, currentId?: string) {
+  const existing = await db.query.categories.findFirst({
+    where: and(eq(categories.characterId, characterId), eq(categories.slug, slug)),
+  });
+  if (existing && existing.id !== currentId) {
+    throw new Error(`该角色下分类 ID 已存在：${slug}`);
+  }
 }
 
 function splitTags(value: string): string[] {

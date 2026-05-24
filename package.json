@@ -16,7 +16,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed-from-json.ts",
     "db:backfill-previews": "tsx scripts/backfill-previews.ts",
-    "db:backfill-visual-hashes": "tsx scripts/backfill-visual-hashes.ts"
+    "db:backfill-visual-hashes": "tsx scripts/backfill-visual-hashes.ts",
+    "db:migrate-ozawayu": "tsx scripts/migrate-ozawayu-category.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

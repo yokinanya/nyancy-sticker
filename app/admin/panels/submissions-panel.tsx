@@ -2,13 +2,15 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { stickers, users } from "@/drizzle/schema";
 import { listAllCategories } from "@/lib/queries/categories";
+import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
 import { findSimilarStickersForSources } from "@/lib/queries/similar-stickers";
 import { SubmissionList } from "@/app/admin/submissions/submission-list";
 
 export async function SubmissionsPanel() {
-  const [pending, categories] = await Promise.all([
+  const [pending, categories, characters] = await Promise.all([
     listPendingSubmissions(),
     listAllCategories(),
+    listCachedCharactersWithCounts(),
   ]);
 
   if (pending.length === 0) {
@@ -24,7 +26,7 @@ export async function SubmissionsPanel() {
     ...requirePreviewSrc(submission),
     similarCandidates: similarById.get(submission.id) ?? [],
   }));
-  return <SubmissionList submissions={submissions} categories={categories} />;
+  return <SubmissionList submissions={submissions} categories={categories} characters={characters} />;
 }
 
 function listPendingSubmissions() {

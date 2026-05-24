@@ -1,8 +1,8 @@
 import { Button, Chip, Input } from "@/components/ui/heroui-compat";
-import type { CategoryWithCount } from "@/lib/queries/categories";
+import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/categories";
 
 interface RoleListProps {
-  roles: readonly CategoryWithCount[];
+  roles: readonly CharacterWithCount[];
   categories: readonly CategoryWithCount[];
   query: string;
   selectedId: string | null;
@@ -65,7 +65,7 @@ function RoleListBody({
   selectedId,
   onSelect,
 }: {
-  roles: readonly CategoryWithCount[];
+  roles: readonly CharacterWithCount[];
   categories: readonly CategoryWithCount[];
   query: string;
   selectedId: string | null;
@@ -95,7 +95,7 @@ function RoleButton({
   selected,
   onSelect,
 }: {
-  role: CategoryWithCount;
+  role: CharacterWithCount;
   childCount: number;
   totalCount: number;
   selected: boolean;
@@ -130,12 +130,10 @@ function RoleEmptyState({ query }: { query: string }) {
   return <p className="p-6 text-center text-sm text-default-500">{text}</p>;
 }
 
-function countChildren(categories: readonly CategoryWithCount[], parentId: string) {
-  return categories.filter((c) => c.parentId === parentId).length;
+function countChildren(categories: readonly CategoryWithCount[], characterId: string) {
+  return categories.filter((c) => c.characterId === characterId).length;
 }
 
-function sumCounts(categories: readonly CategoryWithCount[], parentId: string) {
-  return categories
-    .filter((c) => c.id === parentId || c.parentId === parentId)
-    .reduce((sum, c) => sum + c.count, 0);
+function sumCounts(categories: readonly CategoryWithCount[], characterId: string) {
+  return categories.filter((c) => c.characterId === characterId).reduce((sum, c) => sum + c.count, 0);
 }

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/heroui-compat";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import { bulkUpdateStickers } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
 import type { AdminStickerRow, StickerSort } from "@/lib/queries/admin-stickers";
@@ -19,9 +19,18 @@ import {
   type StickerTableFilters,
 } from "./stickers-table-query";
 
-interface Props { items: readonly AdminStickerRow[]; categories: readonly Category[]; page: number; pageCount: number; pageSize: number; sort: StickerSort; total: number; }
+interface Props {
+  items: readonly AdminStickerRow[];
+  categories: readonly Category[];
+  characters: readonly Character[];
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  sort: StickerSort;
+  total: number;
+}
 
-export function StickersTable({ items, categories, page, pageCount, pageSize, sort, total }: Props) {
+export function StickersTable({ items, categories, characters, page, pageCount, pageSize, sort, total }: Props) {
   const router = useRouter();
   const feedback = useFeedback();
   const searchParams = useSearchParams();
@@ -31,10 +40,9 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const categoryDisplayMap = useMemo(() => createCategoryDisplayMap(categories), [categories]);
   const [editing, setEditing] = useState<AdminStickerRow | null>(null);
-  const topLevels = useMemo(() => categories.filter((category) => !category.parentId), [categories]);
-  const [bulkCharacter, setBulkCharacter] = useState(topLevels[0]?.id ?? "");
+  const [bulkCharacter, setBulkCharacter] = useState(characters[0]?.id ?? "");
   const bulkSubCategories = useMemo(
-    () => categories.filter((category) => category.parentId === bulkCharacter),
+    () => categories.filter((category) => category.characterId === bulkCharacter),
     [categories, bulkCharacter],
   );
   const [bulkCategory, setBulkCategory] = useState(bulkSubCategories[0]?.id ?? "");
@@ -165,6 +173,7 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
 
       <StickersDesktopTable
         categories={categories}
+        characters={characters}
         filters={filters}
         items={items}
         onApplyFilter={applyFilter}
@@ -201,6 +210,7 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
         <StickerEditModal
           sticker={editing}
           categories={categories}
+          characters={characters}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -209,7 +219,7 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
         />
       ) : null}
       <StickersBulkModal
-        topLevels={topLevels}
+        topLevels={characters}
         subCategories={bulkSubCategories}
         character={bulkCharacter}
         category={bulkCategory}
@@ -223,7 +233,7 @@ export function StickersTable({ items, categories, page, pageCount, pageSize, so
         onChangeCategory={setBulkCategory}
         onChangeCharacter={(value) => {
           setBulkCharacter(value);
-          setBulkCategory(categories.find((category) => category.parentId === value)?.id ?? "");
+          setBulkCategory(categories.find((category) => category.characterId === value)?.id ?? "");
         }}
         onChangeTagMode={setBulkTagMode}
         onChangeTagDraft={setBulkTagDraft}

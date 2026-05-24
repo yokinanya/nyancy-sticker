@@ -248,8 +248,8 @@ function createGalleryDerivedData(
   const descendantMap = createCategoryDescendantMap(categories);
   return {
     descendantMap,
-    categoryCounts: countStickersByCategoryTree(categories, stickers, descendantMap),
-    tagsByCategory: countTagsByCategoryTree(categories, stickers, descendantMap),
+    categoryCounts: countStickersByCategoryTree(categories, stickers),
+    tagsByCategory: countTagsByCategoryTree(categories, stickers),
   };
 }
 

@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories, stickers } from "@/drizzle/schema";
+import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
@@ -30,7 +30,6 @@ export async function createSubmission(formData: FormData): Promise<void> {
 
   const found = await db.query.categories.findFirst({ where: eq(categories.id, category) });
   if (!found) throw new Error(`分类不存在：${category}`);
-  if (!found.parentId) throw new Error("必须选择具体子分类，不能直接挂到角色下。");
 
   const uploaded = await uploadStickerFile(file, category);
 
@@ -71,9 +70,9 @@ function readText(formData: FormData, key: string): string {
  */
 export async function createSubcategoryForSubmit(
   formData: FormData,
-): Promise<{ id: string; name: string }> {
+): Promise<{ id: string; name: string; slug: string; characterId: string }> {
   const session = await requireUser();
-  const parentId = readText(formData, "parentId");
+  const characterId = readText(formData, "characterId");
   const rawId = readText(formData, "categoryId");
   const name = readText(formData, "categoryName");
 
@@ -84,25 +83,30 @@ export async function createSubcategoryForSubmit(
     throw new Error(`分类名最长 ${NAME_MAX} 个字符。`);
   }
 
-  const parent = await db.query.categories.findFirst({ where: eq(categories.id, parentId) });
-  if (!parent) throw new Error(`角色不存在：${parentId}`);
-  if (parent.parentId) throw new Error("只能挂到角色下面。");
+  const character = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
+  if (!character) throw new Error(`角色不存在：${characterId}`);
 
-  const id = rawId.startsWith(`${parentId}_`) ? rawId : `${parentId}_${rawId}`;
-  const existing = await db.query.categories.findFirst({ where: eq(categories.id, id) });
-  if (existing) throw new Error(`分类已存在：${id}`);
+  const existing = await db.query.categories.findFirst({
+    where: and(eq(categories.characterId, characterId), eq(categories.slug, rawId)),
+  });
+  if (existing) throw new Error(`该角色下分类 ID 已存在：${rawId}`);
 
   await db.insert(categories).values({
-    id,
+    id: crypto.randomUUID(),
     name,
-    parentId,
+    slug: rawId,
+    characterId,
     createdById: session.user.id,
   });
   revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
   revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
   revalidatePath("/");
   revalidatePath("/admin");
-  return { id, name };
+  const created = await db.query.categories.findFirst({
+    where: and(eq(categories.characterId, characterId), eq(categories.slug, rawId)),
+  });
+  if (!created) throw new Error(`分类创建失败：${rawId}`);
+  return { id: created.id, name, slug: rawId, characterId };
 }
 
 function splitTags(value: string): string[] {

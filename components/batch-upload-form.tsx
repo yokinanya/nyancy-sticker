@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Input, ListBox, ProgressBar, Select } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
-import type { Category } from "@/lib/types";
+import type { Category, Character } from "@/lib/types";
 import {
   baseName,
   extOfName,
@@ -40,6 +40,7 @@ interface Item {
 
 interface Props {
   categories: readonly Category[];
+  characters: readonly Character[];
   /** 单张上传 endpoint，POST multipart formData。默认 /api/submit。 */
   endpoint?: string;
   /** 按钮文案，比如「开始上传」、「批量发布」。 */
@@ -50,6 +51,7 @@ interface Props {
 
 export function BatchUploadForm({
   categories: serverCategories,
+  characters,
   endpoint = "/api/submit",
   submitLabel = "开始上传",
   allowCreateSubcategory = true,
@@ -63,15 +65,13 @@ export function BatchUploadForm({
     () => [...serverCategories, ...extraCategories],
     [serverCategories, extraCategories],
   );
-  const topLevels = useMemo(() => allCategories.filter((c) => !c.parentId), [allCategories]);
-
-  const [character, setCharacter] = useState(topLevels[0]?.id ?? "");
+  const [character, setCharacter] = useState(characters[0]?.id ?? "");
   const [subCategory, setSubCategory] = useState("");
   const subCategories = useMemo(
-    () => allCategories.filter((c) => c.parentId === character),
+    () => allCategories.filter((c) => c.characterId === character),
     [allCategories, character],
   );
-  const currentCharacterName = topLevels.find((c) => c.id === character)?.name ?? "";
+  const currentCharacterName = characters.find((c) => c.id === character)?.name ?? "";
 
   const [defaultTags, setDefaultTags] = useState("");
   const [items, setItems] = useState<Item[]>([]);
@@ -227,7 +227,7 @@ export function BatchUploadForm({
                 setCharacter(v);
                 setSubCategory("");
               }}
-              options={topLevels.map((c) => ({ value: c.id, label: c.name }))}
+              options={characters.map((c) => ({ value: c.id, label: c.name }))}
             />
           </Field>
           <Field label="子分类">
@@ -334,7 +334,7 @@ export function BatchUploadForm({
 
       {createOpen && character ? (
         <CreateSubcategoryModal
-          parentId={character}
+          characterId={character}
           parentName={currentCharacterName}
           onClose={() => setCreateOpen(false)}
           onCreated={onSubcategoryCreated}

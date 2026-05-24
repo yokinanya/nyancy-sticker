@@ -19,7 +19,7 @@ export const EMPTY_STICKER_FILTERS: StickerTableFilters = {
 };
 
 export function createCategoryDisplayMap(categories: readonly Category[]) {
-  return new Map(categories.map((category) => [category.id, `${category.name} (${category.id})`]));
+  return new Map(categories.map((category) => [category.id, `${category.name} (${category.slug})`]));
 }
 
 export function categoryDisplayName(displayMap: ReadonlyMap<string, string>, categoryId: string) {

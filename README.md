@@ -71,13 +71,14 @@ pnpm db:backfill-previews # 为 approved/pending 历史贴纸生成 R2 预览图
 
 - `user`：Auth.js 标配 + `githubLogin` + `role`(`user`|`admin`) + `createdAt`
 - `account` / `session` / `verificationToken`：Auth.js 标配
-- `category`：一级分类（角色）与二级分类（合集），`parentId` 自引用
+- `character`：角色一级归属
+- `category`：角色下的子分类，`characterId + slug` 在同一角色内唯一
 - `sticker`：单表 + `status`(`approved`|`pending`|`rejected`)，含 `src` 原图、`previewSrc` 预览图、`submittedById` / `approvedById` / `approvedAt` / `rejectionReason`；`tags` 为 `text[]`（GIN 索引）；`hash` 配合 partial unique index 保证未拒绝行的去重
 
 R2 key 规则：
-- 原图：`stickers/<一级分类id>/<二级分类id>/<hash>.<ext>`
-- 静态图预览：`previews/<一级分类id>/<二级分类id>/<hash>-240.webp`
-- GIF 预览：`previews/<一级分类id>/<二级分类id>/<hash>-160.gif`
+- 原图：`stickers/<角色id>/<分类slug>/<hash>.<ext>`
+- 静态图预览：`previews/<角色id>/<分类slug>/<hash>-240.webp`
+- GIF 预览：`previews/<角色id>/<分类slug>/<hash>-160.gif`
 
 生产上传链路会同时写入原图和预览图；历史数据在首次 seed 后必须运行 `pnpm db:backfill-previews`，否则画廊查询会显式报错提示缺少 `previewSrc`。
 
