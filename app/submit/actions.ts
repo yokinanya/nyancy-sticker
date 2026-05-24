@@ -77,7 +77,7 @@ export async function createSubcategoryForSubmit(
   const name = readText(formData, "categoryName");
 
   if (!SLUG_RE.test(rawId)) {
-    throw new Error("分类 ID 仅允许字母数字下划线和短横线，长度 2-32，且以字母数字开头。");
+    throw new Error("分类短名仅允许字母数字下划线和短横线，长度 2-32，且以字母数字开头。");
   }
   if (name.length > NAME_MAX) {
     throw new Error(`分类名最长 ${NAME_MAX} 个字符。`);
@@ -89,10 +89,11 @@ export async function createSubcategoryForSubmit(
   const existing = await db.query.categories.findFirst({
     where: and(eq(categories.characterId, characterId), eq(categories.slug, rawId)),
   });
-  if (existing) throw new Error(`该角色下分类 ID 已存在：${rawId}`);
+  if (existing) throw new Error(`该角色下分类短名已存在：${rawId}`);
+  await ensureCategoryIdAvailable(rawId);
 
   await db.insert(categories).values({
-    id: crypto.randomUUID(),
+    id: rawId,
     name,
     slug: rawId,
     characterId,
@@ -107,6 +108,11 @@ export async function createSubcategoryForSubmit(
   });
   if (!created) throw new Error(`分类创建失败：${rawId}`);
   return { id: created.id, name, slug: rawId, characterId };
+}
+
+async function ensureCategoryIdAvailable(id: string): Promise<void> {
+  const existing = await db.query.categories.findFirst({ where: eq(categories.id, id) });
+  if (existing) throw new Error(`分类实际 ID 已存在：${id}`);
 }
 
 function splitTags(value: string): string[] {

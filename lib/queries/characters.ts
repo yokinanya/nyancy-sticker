@@ -22,12 +22,16 @@ export async function listCharactersWithCounts(): Promise<CharacterSummary[]> {
   return listCharactersWithCountsByVisibility("public");
 }
 
+export async function listStaffVisibleCharactersWithCounts(): Promise<CharacterSummary[]> {
+  return listCharactersWithCountsByVisibility("staff");
+}
+
 export async function listAllCharactersWithCounts(): Promise<CharacterSummary[]> {
   return listCharactersWithCountsByVisibility("all");
 }
 
 async function listCharactersWithCountsByVisibility(
-  visibility: "public" | "all",
+  visibility: "public" | "staff" | "all",
 ): Promise<CharacterSummary[]> {
   const result = await db.execute<{
     id: string;
@@ -40,7 +44,9 @@ async function listCharactersWithCountsByVisibility(
     FROM "character" ch
     LEFT JOIN "category" c ON c."characterId" = ch.id
     LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
-    WHERE ${visibility === "all"} OR ch.visibility = 'public'
+    WHERE ${visibility === "all"}
+      OR ch.visibility = 'public'
+      OR (${visibility === "staff"} AND ch.visibility = 'admin_only')
     GROUP BY ch.id, ch.name, ch.visibility, ch."backgroundImageUrl"
     ORDER BY ch.id ASC
   `);
@@ -62,6 +68,12 @@ export const listCachedCharactersWithCounts = unstable_cache(
 export const listCachedAllCharactersWithCounts = unstable_cache(
   listAllCharactersWithCounts,
   ["all-character-list-with-counts"],
+  { tags: [CHARACTER_LIST_CACHE_TAG, CATEGORY_TREE_CACHE_TAG] },
+);
+
+export const listCachedStaffVisibleCharactersWithCounts = unstable_cache(
+  listStaffVisibleCharactersWithCounts,
+  ["staff-visible-character-list-with-counts"],
   { tags: [CHARACTER_LIST_CACHE_TAG, CATEGORY_TREE_CACHE_TAG] },
 );
 

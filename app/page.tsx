@@ -1,10 +1,19 @@
+import { auth } from "@/auth";
 import { CharacterList } from "@/components/character-list";
-import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
+import {
+  listCachedCharactersWithCounts,
+  listCachedStaffVisibleCharactersWithCounts,
+} from "@/lib/queries/characters";
 
 export const revalidate = false;
 
 export default async function HomePage() {
-  const characters = await listCachedCharactersWithCounts();
+  const session = await auth();
+  const canViewAdminOnly = session?.user?.role === "admin" || session?.user?.role === "editor";
+  const characters = canViewAdminOnly
+    ? await listCachedStaffVisibleCharactersWithCounts()
+    : await listCachedCharactersWithCounts();
+
   return (
     <div className="motion-page page-shell flex max-w-6xl flex-col gap-4">
       <section className="flex flex-col gap-3">

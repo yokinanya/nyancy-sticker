@@ -153,7 +153,7 @@ function SubcategoryRows({
         <thead className="border-b border-default-100 bg-surface-muted/70 text-xs text-default-500">
           <tr>
             <th className="p-3">名称</th>
-            <th className="p-3">ID</th>
+            <th className="p-3">短名（slug）</th>
             <th className="p-3">贴纸</th>
             <th className="p-3">创建者</th>
             <th className="p-3">创建时间</th>

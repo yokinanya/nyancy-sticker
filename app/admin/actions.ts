@@ -147,13 +147,13 @@ export async function updateSticker(formData: FormData): Promise<void> {
 
 export async function addCategory(formData: FormData): Promise<void> {
   const session = await requireEditor();
-  const id = crypto.randomUUID();
   const characterId = readText(formData, "characterId");
   const slug = readText(formData, "categoryId");
   await ensureCharacterExists(characterId);
+  await ensureCategoryIdAvailable(slug);
   await ensureCategorySlugAvailable(characterId, slug);
   await db.insert(categories).values({
-    id,
+    id: slug,
     name: readText(formData, "categoryName"),
     slug,
     characterId,
@@ -281,8 +281,13 @@ async function ensureCategorySlugAvailable(characterId: string, slug: string, cu
     where: and(eq(categories.characterId, characterId), eq(categories.slug, slug)),
   });
   if (existing && existing.id !== currentId) {
-    throw new Error(`该角色下分类 ID 已存在：${slug}`);
+    throw new Error(`该角色下分类短名已存在：${slug}`);
   }
+}
+
+async function ensureCategoryIdAvailable(id: string): Promise<void> {
+  const existing = await db.query.categories.findFirst({ where: eq(categories.id, id) });
+  if (existing) throw new Error(`分类实际 ID 已存在：${id}`);
 }
 
 function splitTags(value: string): string[] {

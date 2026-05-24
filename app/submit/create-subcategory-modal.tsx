@@ -60,7 +60,7 @@ export function CreateSubcategoryModal({ characterId, parentName, onClose, onCre
             <Modal.Body>
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-default-500">分类 ID（slug）</label>
+                  <label className="text-xs text-default-500">分类短名（slug）</label>
                   <Input
                     value={id}
                     onChange={(e) => setId(e.target.value)}

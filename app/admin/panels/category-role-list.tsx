@@ -29,7 +29,7 @@ export function RoleList({
         <Input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="搜索角色 / 分类 / ID"
+          placeholder="搜索角色 / 分类 / 短名 / ID"
           className="h-9 min-h-9"
         />
       </div>

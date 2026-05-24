@@ -137,15 +137,24 @@ function CategoryEditorModal({
             </Modal.Header>
             <Modal.Body>
               <div className="grid gap-3">
-                <Field label={draft.mode.includes("character") ? "角色 ID" : "分类 ID（slug）"}>
+                <Field label={draft.mode.includes("character") ? "角色 ID" : "分类短名（slug）"}>
                   <Input
                     value={id}
                     onChange={(e) => setId(e.target.value)}
-                    placeholder="id（slug）"
+                    placeholder={draft.mode.includes("character") ? "角色 ID" : "分类短名"}
                     disabled={draft.mode.startsWith("edit-character")}
                     className="field-control px-3"
                   />
                 </Field>
+                {draft.mode === "edit-category" ? (
+                  <Field label="实际 ID">
+                    <Input
+                      value={draft.category.id}
+                      disabled
+                      className="field-control px-3 font-mono text-xs"
+                    />
+                  </Field>
+                ) : null}
                 <Field label="显示名">
                   <Input
                     value={name}
