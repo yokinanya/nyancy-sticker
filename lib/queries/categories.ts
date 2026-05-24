@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import { asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories } from "@/drizzle/schema";
-import type { Category } from "@/lib/types";
+import type { Category, CharacterVisibility } from "@/lib/types";
 
 export const CATEGORY_TREE_CACHE_TAG = "category-tree";
 
@@ -45,6 +45,8 @@ export interface CategoryWithCount {
 export interface CharacterWithCount {
   id: string;
   name: string;
+  visibility: CharacterVisibility;
+  backgroundImageUrl: string | null;
   count: number;
   createdAt: Date;
   createdByName: string | null;
@@ -55,6 +57,8 @@ export async function listCharactersForCategoryManager(): Promise<CharacterWithC
   const result = await db.execute<{
     id: string;
     name: string;
+    visibility: CharacterVisibility;
+    backgroundImageUrl: string | null;
     count: number;
     createdAt: Date;
     createdByName: string | null;
@@ -63,6 +67,8 @@ export async function listCharactersForCategoryManager(): Promise<CharacterWithC
     SELECT
       ch.id,
       ch.name,
+      ch.visibility,
+      ch."backgroundImageUrl",
       COUNT(s.id)::int AS count,
       ch."createdAt",
       u.name AS "createdByName",
@@ -71,12 +77,14 @@ export async function listCharactersForCategoryManager(): Promise<CharacterWithC
     LEFT JOIN "category" c ON c."characterId" = ch.id
     LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
     LEFT JOIN "user" u ON ch."createdById" = u.id
-    GROUP BY ch.id, ch.name, ch."createdAt", u.name, u."githubLogin"
+    GROUP BY ch.id, ch.name, ch.visibility, ch."backgroundImageUrl", ch."createdAt", u.name, u."githubLogin"
     ORDER BY ch.id ASC
   `);
   return result.rows.map((r) => ({
     id: r.id,
     name: r.name,
+    visibility: r.visibility,
+    backgroundImageUrl: r.backgroundImageUrl,
     count: Number(r.count),
     createdAt: new Date(r.createdAt),
     createdByName: r.createdByName,

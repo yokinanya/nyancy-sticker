@@ -58,12 +58,21 @@ function CharacterCard({
       <Link
         href={`/${encodeURIComponent(character.id)}`}
         onClick={() => onNavigate(character.id)}
-        className={`motion-press ui-focus surface group flex min-h-28 flex-col justify-between gap-4 p-4 hover:border-primary/45 hover:bg-surface-raised ${
+        className={`motion-press ui-focus surface group relative flex aspect-[21/9] min-h-32 flex-col justify-between gap-4 overflow-hidden p-4 hover:border-primary/45 hover:bg-surface-raised ${
           isNavigating ? "motion-selection border-primary/60 bg-primary/10" : ""
         }`}
         aria-busy={isNavigating}
       >
-        <div className="flex items-start justify-between gap-3">
+        {character.backgroundImageUrl ? (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-55 transition duration-200 group-hover:scale-[1.02] group-hover:opacity-70"
+              style={{ backgroundImage: `url("${escapeCssUrl(character.backgroundImageUrl)}")` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/58 to-background/28" />
+          </>
+        ) : null}
+        <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{character.name}</h3>
             <p className="mt-1 font-mono text-[11px] text-muted">{character.id}</p>
@@ -72,7 +81,7 @@ function CharacterCard({
             {character.count} 张
           </span>
         </div>
-        <div className="flex items-center justify-between text-sm">
+        <div className="relative flex items-center justify-between text-sm">
           <span className="text-muted">进入图库</span>
           {isNavigating ? (
             <span
@@ -87,6 +96,10 @@ function CharacterCard({
       </Link>
     </li>
   );
+}
+
+function escapeCssUrl(url: string) {
+  return url.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
 }
 
 function filterCharacters(characters: readonly CharacterSummary[], query: string) {

@@ -1,11 +1,23 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Modal } from "@/components/ui/heroui-compat";
-import { addCategory, addCharacter, updateCategory, updateCharacter } from "@/app/admin/actions";
+import { Button, Input, ListBox, Modal, Select } from "@/components/ui/heroui-compat";
+import {
+  addCategory,
+  addCharacter,
+  updateCategory,
+  updateCharacter,
+} from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
 import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/categories";
+import type { CharacterVisibility } from "@/lib/types";
+import { CharacterBackgroundUpload } from "./character-background-upload";
 import { CategoryDetail } from "./category-detail";
 import type { SubmitHandler } from "./category-manager-types";
 import { RoleList } from "./category-role-list";
@@ -98,11 +110,17 @@ function CategoryEditorModal({
 }) {
   const [id, setId] = useState(initialId(draft));
   const [name, setName] = useState(initialName(draft));
+  const [visibility, setVisibility] = useState(initialVisibility(draft));
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialBackgroundImageUrl(draft));
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+  const feedback = useFeedback();
   const title = getDraftTitle(draft);
 
   const save = () => {
     const fd = new FormData();
-    if (draft.mode.includes("character")) saveCharacter(draft, fd, id, name, onSubmit, onCreated);
+    if (draft.mode.includes("character")) {
+      saveCharacter(draft, fd, id, name, visibility, backgroundImageUrl, onSubmit, onCreated);
+    }
     else saveCategory(draft, fd, id, name, onSubmit);
   };
 
@@ -136,6 +154,28 @@ function CategoryEditorModal({
                     className="field-control px-3"
                   />
                 </Field>
+                {draft.mode.includes("character") ? (
+                  <>
+                    <Field label="显示">
+                      <VisibilitySelect value={visibility} onChange={setVisibility} />
+                    </Field>
+                    <Field label="首页背景图 URL">
+                      <Input
+                        value={backgroundImageUrl}
+                        onChange={(e) => setBackgroundImageUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="field-control px-3"
+                      />
+                    </Field>
+                    <CharacterBackgroundUpload
+                      characterId={id}
+                      isUploading={uploadingBackground}
+                      onUploaded={setBackgroundImageUrl}
+                      setUploading={setUploadingBackground}
+                      feedback={feedback}
+                    />
+                  </>
+                ) : null}
               </div>
             </Modal.Body>
             <Modal.Footer>
@@ -163,16 +203,28 @@ function initialName(draft: Draft) {
   return draft.character?.name ?? draft.category?.name ?? "";
 }
 
+function initialVisibility(draft: Draft): CharacterVisibility {
+  return draft.character?.visibility ?? "public";
+}
+
+function initialBackgroundImageUrl(draft: Draft) {
+  return draft.character?.backgroundImageUrl ?? "";
+}
+
 function saveCharacter(
   draft: Draft,
   fd: FormData,
   id: string,
   name: string,
+  visibility: CharacterVisibility,
+  backgroundImageUrl: string,
   onSubmit: SubmitHandler,
   onCreated: (id: string) => void,
 ) {
   fd.set("characterId", id);
   fd.set("characterName", name);
+  fd.set("characterVisibility", visibility);
+  fd.set("characterBackgroundImageUrl", backgroundImageUrl);
   onSubmit(draft.mode === "edit-character" ? updateCharacter : addCharacter, fd, `${getDraftTitle(draft)}：${id}`);
   if (draft.mode === "add-character") onCreated(id);
 }
@@ -185,6 +237,36 @@ function saveCategory(draft: Draft, fd: FormData, slug: string, name: string, on
   fd.set("categoryName", name);
   fd.set("characterId", characterId);
   onSubmit(draft.mode === "edit-category" ? updateCategory : addCategory, fd, `${getDraftTitle(draft)}：${slug}`);
+}
+
+function VisibilitySelect({
+  onChange,
+  value,
+}: {
+  onChange: (value: CharacterVisibility) => void;
+  value: CharacterVisibility;
+}) {
+  return (
+    <Select selectedKey={value} onSelectionChange={(key) => onChange(String(key) as CharacterVisibility)}>
+      <Select.Trigger aria-label="角色显示状态" className="field-trigger modal-field bg-content1">
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover className="motion-popover popover-surface max-h-56 overflow-auto">
+        <ListBox>
+          <ListBox.Item id="public" textValue="正常显示" className="listbox-option">
+            正常显示
+          </ListBox.Item>
+          <ListBox.Item id="hidden" textValue="隐藏（所有人不可见）" className="listbox-option">
+            隐藏（所有人不可见）
+          </ListBox.Item>
+          <ListBox.Item id="admin_only" textValue="隐藏（仅管理员可见）" className="listbox-option">
+            隐藏（仅管理员可见）
+          </ListBox.Item>
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  );
 }
 
 function getDraftTitle(draft: Draft) {
@@ -222,7 +304,7 @@ function matchesCategory(category: CategoryWithCount, text: string) {
   );
 }
 
-function Field({ children, label }: { children: React.ReactNode; label: string }) {
+function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <div className="grid gap-1">
       <label className="text-xs text-default-500">{label}</label>

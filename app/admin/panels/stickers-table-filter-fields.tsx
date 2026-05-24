@@ -13,6 +13,8 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: STATUS_LABEL.rejected },
 ] as const;
 
+type CategoryOption = Category | Character | { id: string; name: string };
+
 export function TextFilterContent({
   filterKey,
   label,
@@ -127,7 +129,7 @@ function CategoryAutocomplete({
 }: {
   isDisabled?: boolean;
   onChange: (value: string) => void;
-  options: readonly (Category | Character)[];
+  options: readonly CategoryOption[];
   value: string;
 }) {
   const [query, setQuery] = useState("");
@@ -188,7 +190,7 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   );
 }
 
-function filterCategories(options: readonly (Category | Character)[], query: string) {
+function filterCategories(options: readonly CategoryOption[], query: string) {
   const text = query.trim().toLowerCase();
   if (!text) return options;
   return options.filter((option) => {
@@ -197,6 +199,6 @@ function filterCategories(options: readonly (Category | Character)[], query: str
   });
 }
 
-function optionLabel(option: Category | Character) {
+function optionLabel(option: CategoryOption) {
   return "slug" in option ? `${option.name} (${option.slug})` : option.name;
 }

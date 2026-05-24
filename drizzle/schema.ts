@@ -15,6 +15,7 @@ export const userRole = pgEnum("user_role", ["user", "editor", "admin"]);
 export const stickerExt = pgEnum("sticker_ext", ["png", "gif", "webp", "jpg", "jpeg"]);
 export const stickerStatus = pgEnum("sticker_status", ["approved", "pending", "rejected"]);
 export const similarityDecision = pgEnum("similarity_decision", ["keep_both"]);
+export const characterVisibility = pgEnum("character_visibility", ["public", "hidden", "admin_only"]);
 
 export const users = pgTable("user", {
   id: text("id")
@@ -70,6 +71,8 @@ export const verificationTokens = pgTable(
 export const characters = pgTable("character", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  visibility: characterVisibility("visibility").notNull().default("public"),
+  backgroundImageUrl: text("backgroundImageUrl"),
   createdById: text("createdById").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
 });

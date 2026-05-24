@@ -4,7 +4,7 @@ import {
   type StickerStatus,
 } from "@/lib/queries/admin-stickers";
 import { listCachedCategories } from "@/lib/queries/categories";
-import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
+import { listCachedAllCharactersWithCounts } from "@/lib/queries/characters";
 import { StickersTable } from "./stickers-table";
 
 const VALID_STATUS: readonly StickerStatus[] = ["approved", "pending", "rejected"];
@@ -55,7 +55,7 @@ export async function StickersPanel({ searchParams }: Props) {
       pageSize,
     }),
     listCachedCategories(),
-    listCachedCharactersWithCounts(),
+    listCachedAllCharactersWithCounts(),
   ]);
 
   return (

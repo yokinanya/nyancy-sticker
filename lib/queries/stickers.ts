@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
-import type { Sticker, Category } from "@/lib/types";
+import type { Sticker, Category, CharacterVisibility } from "@/lib/types";
 
 export async function listApprovedStickers(): Promise<Sticker[]> {
   const rows = await db
@@ -72,7 +72,7 @@ export async function listApprovedStickersByCharacter(
 export async function listCharacterGallery(
   characterId: string,
 ): Promise<{
-  character: { id: string; name: string } | null;
+  character: CharacterGalleryCharacter | null;
   stickers: Sticker[];
   categories: Category[];
 }> {
@@ -84,7 +84,12 @@ export async function listCharacterGallery(
     )
     SELECT
       (
-        SELECT jsonb_build_object('id', id, 'name', name)
+        SELECT jsonb_build_object(
+          'id', id,
+          'name', name,
+          'visibility', visibility,
+          'backgroundImageUrl', "backgroundImageUrl"
+        )
         FROM "character"
         WHERE id = ${characterId}
         LIMIT 1
@@ -144,7 +149,7 @@ function requirePreviewSrc(sticker: QueriedSticker): Sticker {
 }
 
 interface CharacterGalleryRow extends Record<string, unknown> {
-  character: { id: string; name: string } | null;
+  character: CharacterGalleryCharacter | null;
   categories: RawCategory[];
   stickers: QueriedSticker[];
 }
@@ -154,6 +159,13 @@ interface RawCategory {
   name: string;
   slug: string;
   characterId: string;
+}
+
+interface CharacterGalleryCharacter {
+  id: string;
+  name: string;
+  visibility: CharacterVisibility;
+  backgroundImageUrl: string | null;
 }
 
 function normalizeCategory(category: RawCategory): Category {

@@ -119,6 +119,7 @@ function RoleButton({
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-default-400">
         <span className="font-mono">{role.id}</span>
+        <span>{visibilityLabel(role.visibility)}</span>
         <span>{totalCount} 张</span>
       </div>
     </button>
@@ -136,4 +137,10 @@ function countChildren(categories: readonly CategoryWithCount[], characterId: st
 
 function sumCounts(categories: readonly CategoryWithCount[], characterId: string) {
   return categories.filter((c) => c.characterId === characterId).reduce((sum, c) => sum + c.count, 0);
+}
+
+function visibilityLabel(value: CharacterWithCount["visibility"]) {
+  if (value === "hidden") return "隐藏";
+  if (value === "admin_only") return "仅管理员";
+  return "正常";
 }

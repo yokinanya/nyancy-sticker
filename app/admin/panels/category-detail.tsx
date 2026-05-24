@@ -75,6 +75,9 @@ function RoleOverview({
             <Chip size="sm" variant="primary">
               <Chip.Label>{totalCount} 张</Chip.Label>
             </Chip>
+            <Chip size="sm" variant="soft">
+              <Chip.Label>{visibilityLabel(role.visibility)}</Chip.Label>
+            </Chip>
           </div>
           <p className="mt-1 break-all font-mono text-xs text-default-400">{role.id}</p>
         </div>
@@ -100,6 +103,7 @@ function RoleOverview({
         <SummaryItem label="子分类" value={`${childCount} 个`} />
         <SummaryItem label="创建者" value={creatorName(role)} />
         <SummaryItem label="创建时间" value={formatDate(role.createdAt)} />
+        <SummaryItem label="背景图" value={role.backgroundImageUrl ? "已设置" : "未设置"} />
       </div>
     </div>
   );
@@ -244,5 +248,11 @@ function creatorName(category: CategoryWithCount | CharacterWithCount) {
 
 function formatDate(date: Date) {
   return new Date(date).toLocaleDateString("zh-CN");
+}
+
+function visibilityLabel(value: CharacterWithCount["visibility"]) {
+  if (value === "hidden") return "隐藏";
+  if (value === "admin_only") return "仅管理员";
+  return "正常显示";
 }
 

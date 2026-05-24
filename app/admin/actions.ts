@@ -10,6 +10,8 @@ import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
 import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
 import { keyFromUrl, remove } from "@/lib/r2";
 import { uploadStickerFile } from "@/lib/upload";
+import { uploadCharacterBackground } from "@/lib/character-background";
+import type { CharacterVisibility } from "@/lib/types";
 
 export async function bulkUpdateStickers(formData: FormData): Promise<void> {
   await requireEditor();
@@ -182,6 +184,8 @@ export async function addCharacter(formData: FormData): Promise<void> {
   await db.insert(characters).values({
     id,
     name: readText(formData, "characterName"),
+    visibility: readCharacterVisibility(formData),
+    backgroundImageUrl: readOptionalText(formData, "characterBackgroundImageUrl"),
     createdById: session.user.id,
   });
   revalidateAdminPages();
@@ -190,8 +194,23 @@ export async function addCharacter(formData: FormData): Promise<void> {
 export async function updateCharacter(formData: FormData): Promise<void> {
   await requireEditor();
   const id = readText(formData, "characterId");
-  await db.update(characters).set({ name: readText(formData, "characterName") }).where(eq(characters.id, id));
+  await db
+    .update(characters)
+    .set({
+      name: readText(formData, "characterName"),
+      visibility: readCharacterVisibility(formData),
+      backgroundImageUrl: readOptionalText(formData, "characterBackgroundImageUrl"),
+    })
+    .where(eq(characters.id, id));
   revalidateAdminPages();
+}
+
+export async function uploadCharacterBackgroundAction(formData: FormData): Promise<string> {
+  await requireEditor();
+  const characterId = readText(formData, "characterId");
+  const file = formData.get("backgroundImage");
+  if (!(file instanceof File)) throw new Error("请上传背景图文件。");
+  return uploadCharacterBackground(file, characterId);
 }
 
 export async function deleteCategory(formData: FormData): Promise<void> {
@@ -240,6 +259,21 @@ function readStickerStatus(formData: FormData): "approved" | "pending" | "reject
 async function ensureCharacterExists(id: string): Promise<void> {
   const found = await db.query.characters.findFirst({ where: eq(characters.id, id) });
   if (!found) throw new Error(`角色不存在：${id}`);
+}
+
+function readOptionalText(formData: FormData, key: string): string | null {
+  const value = formData.get(key);
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return text ? text : null;
+}
+
+function readCharacterVisibility(formData: FormData): CharacterVisibility {
+  const visibility = readText(formData, "characterVisibility");
+  if (visibility === "public" || visibility === "hidden" || visibility === "admin_only") {
+    return visibility;
+  }
+  throw new Error(`无效角色可见性：${visibility}`);
 }
 
 async function ensureCategorySlugAvailable(characterId: string, slug: string, currentId?: string) {

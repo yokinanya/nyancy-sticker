@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { stickers, users } from "@/drizzle/schema";
 import { listAllCategories } from "@/lib/queries/categories";
-import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
+import { listCachedAllCharactersWithCounts } from "@/lib/queries/characters";
 import { findSimilarStickersForSources } from "@/lib/queries/similar-stickers";
 import { SubmissionList } from "@/app/admin/submissions/submission-list";
 
@@ -10,7 +10,7 @@ export async function SubmissionsPanel() {
   const [pending, categories, characters] = await Promise.all([
     listPendingSubmissions(),
     listAllCategories(),
-    listCachedCharactersWithCounts(),
+    listCachedAllCharactersWithCounts(),
   ]);
 
   if (pending.length === 0) {

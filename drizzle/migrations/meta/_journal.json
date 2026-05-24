@@ -50,6 +50,13 @@
       "when": 1779600000000,
       "tag": "0006_split_characters_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779600100000,
+      "tag": "0007_character_visibility",
+      "breakpoints": true
     }
   ]
 }

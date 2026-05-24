@@ -1,4 +1,5 @@
 export type StickerExt = "png" | "gif" | "webp" | "jpg" | "jpeg";
+export type CharacterVisibility = "public" | "hidden" | "admin_only";
 
 export interface Sticker {
   id: string;
@@ -15,6 +16,8 @@ export interface Sticker {
 export interface Character {
   id: string;
   name: string;
+  visibility: CharacterVisibility;
+  backgroundImageUrl: string | null;
 }
 
 export interface Category {

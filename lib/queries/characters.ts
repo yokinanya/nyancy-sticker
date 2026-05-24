@@ -2,12 +2,15 @@ import { sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { CATEGORY_TREE_CACHE_TAG } from "./categories";
+import type { CharacterVisibility } from "@/lib/types";
 
 export const CHARACTER_LIST_CACHE_TAG = "character-list";
 
 export interface CharacterSummary {
   id: string;
   name: string;
+  visibility: CharacterVisibility;
+  backgroundImageUrl: string | null;
   count: number;
 }
 
@@ -16,15 +19,38 @@ export interface CharacterSummary {
  * （该角色直属贴纸 + 该角色分类下贴纸的合计）。
  */
 export async function listCharactersWithCounts(): Promise<CharacterSummary[]> {
-  const result = await db.execute<{ id: string; name: string; count: number }>(sql`
-    SELECT ch.id, ch.name, COUNT(s.id)::int AS count
+  return listCharactersWithCountsByVisibility("public");
+}
+
+export async function listAllCharactersWithCounts(): Promise<CharacterSummary[]> {
+  return listCharactersWithCountsByVisibility("all");
+}
+
+async function listCharactersWithCountsByVisibility(
+  visibility: "public" | "all",
+): Promise<CharacterSummary[]> {
+  const result = await db.execute<{
+    id: string;
+    name: string;
+    visibility: CharacterVisibility;
+    backgroundImageUrl: string | null;
+    count: number;
+  }>(sql`
+    SELECT ch.id, ch.name, ch.visibility, ch."backgroundImageUrl", COUNT(s.id)::int AS count
     FROM "character" ch
     LEFT JOIN "category" c ON c."characterId" = ch.id
     LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
-    GROUP BY ch.id, ch.name
+    WHERE ${visibility === "all"} OR ch.visibility = 'public'
+    GROUP BY ch.id, ch.name, ch.visibility, ch."backgroundImageUrl"
     ORDER BY ch.id ASC
   `);
-  return result.rows.map((r) => ({ id: r.id, name: r.name, count: Number(r.count) }));
+  return result.rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    visibility: r.visibility,
+    backgroundImageUrl: r.backgroundImageUrl,
+    count: Number(r.count),
+  }));
 }
 
 export const listCachedCharactersWithCounts = unstable_cache(
@@ -33,9 +59,22 @@ export const listCachedCharactersWithCounts = unstable_cache(
   { tags: [CHARACTER_LIST_CACHE_TAG, CATEGORY_TREE_CACHE_TAG] },
 );
 
-export async function findCharacter(id: string): Promise<{ id: string; name: string } | null> {
-  const result = await db.execute<{ id: string; name: string }>(sql`
-    SELECT id, name FROM "character" WHERE id = ${id} LIMIT 1
+export const listCachedAllCharactersWithCounts = unstable_cache(
+  listAllCharactersWithCounts,
+  ["all-character-list-with-counts"],
+  { tags: [CHARACTER_LIST_CACHE_TAG, CATEGORY_TREE_CACHE_TAG] },
+);
+
+export async function findCharacter(
+  id: string,
+): Promise<{ id: string; name: string; visibility: CharacterVisibility } | null> {
+  const result = await db.execute<{
+    id: string;
+    name: string;
+    visibility: CharacterVisibility;
+    backgroundImageUrl: string | null;
+  }>(sql`
+    SELECT id, name, visibility, "backgroundImageUrl" FROM "character" WHERE id = ${id} LIMIT 1
   `);
   return result.rows[0] ?? null;
 }
