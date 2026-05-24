@@ -241,7 +241,7 @@ function ChoicePopover({
 
   return createPortal(
     <div
-      className={cn("fixed z-50 min-w-[var(--choice-trigger-width)]", className)}
+      className={cn("pointer-events-auto fixed z-[70] min-w-[var(--choice-trigger-width)]", className)}
       data-choice-popover={choice.popoverId}
       style={style}
       {...props}

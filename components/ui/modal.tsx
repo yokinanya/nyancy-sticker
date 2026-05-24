@@ -31,8 +31,19 @@ export const Modal = Object.assign(({ children }: { children: ReactNode }) => <>
       />
     );
   },
-  Dialog({ className, ...props }: Dialog.DialogContentProps) {
-    return <Dialog.Content className={cn("relative rounded-lg p-0", className)} {...props} />;
+  Dialog({ className, onInteractOutside, ...props }: Dialog.DialogContentProps) {
+    const handleInteractOutside: NonNullable<Dialog.DialogContentProps["onInteractOutside"]> = (event) => {
+      if (isChoicePopoverTarget(event.target)) event.preventDefault();
+      onInteractOutside?.(event);
+    };
+
+    return (
+      <Dialog.Content
+        className={cn("relative rounded-lg p-0", className)}
+        onInteractOutside={handleInteractOutside}
+        {...props}
+      />
+    );
   },
   CloseTrigger({ className, ...props }: Dialog.DialogCloseProps) {
     return <Dialog.Close className={className} {...props} />;
@@ -55,3 +66,7 @@ export const Modal = Object.assign(({ children }: { children: ReactNode }) => <>
     );
   },
 });
+
+function isChoicePopoverTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("[data-choice-popover]"));
+}
