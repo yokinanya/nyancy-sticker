@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Shuffle } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
+import { categoryIdFor, randomCategorySlug } from "@/lib/category-ids";
 import type { Category } from "@/lib/types";
 import { createSubcategoryForSubmit } from "./actions";
 
@@ -19,6 +21,7 @@ export function CreateSubcategoryModal({ characterId, parentName, onClose, onCre
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const previewId = id.trim() ? categoryIdFor(characterId, id.trim()) : "";
 
   const submit = () => {
     setError(null);
@@ -61,15 +64,35 @@ export function CreateSubcategoryModal({ characterId, parentName, onClose, onCre
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-default-500">分类短名（slug）</label>
-                  <Input
-                    value={id}
-                    onChange={(e) => setId(e.target.value)}
-                    placeholder="例如：2026 或 daily"
-                    className="field-control bg-content1 px-3"
-                  />
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <Input
+                      value={id}
+                      onChange={(e) => setId(e.target.value)}
+                      placeholder="例如：2026 或 daily"
+                      className="field-control bg-content1 px-3"
+                    />
+                    <Button
+                      type="button"
+                      variant="soft"
+                      onPress={() => setId(randomCategorySlug())}
+                      className="motion-press"
+                    >
+                      <Shuffle className="h-4 w-4" aria-hidden="true" />
+                      随机
+                    </Button>
+                  </div>
                   <span className="text-[10px] text-default-400">
                     字母数字下划线短横线，长度 2-32。同一角色下不能重复。
                   </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-default-500">分类 ID</label>
+                  <Input
+                    value={previewId}
+                    readOnly
+                    placeholder={`${characterId}_...`}
+                    className="field-control bg-content1 px-3 font-mono text-xs"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-default-500">分类显示名</label>

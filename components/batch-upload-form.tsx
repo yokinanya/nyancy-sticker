@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Chip, Input, ListBox, ProgressBar, Select } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
 import type { Category, Character } from "@/lib/types";
+import { filesFromDataTransfer } from "@/lib/dropped-files";
 import {
   baseName,
   extOfName,
@@ -62,7 +63,7 @@ export function BatchUploadForm({
 
   const [extraCategories, setExtraCategories] = useState<Category[]>([]);
   const allCategories = useMemo(
-    () => [...serverCategories, ...extraCategories],
+    () => mergeCategories(serverCategories, extraCategories),
     [serverCategories, extraCategories],
   );
   const [character, setCharacter] = useState(characters[0]?.id ?? "");
@@ -111,6 +112,14 @@ export function BatchUploadForm({
       .forEach((i) => void preprocessItem(i, setItems));
     // 预处理完后做一次重复检测（用 setTimeout 等所有 hash 完成）
     void runDuplicateCheck(newItems);
+  };
+
+  const onDropFiles = async (dataTransfer: DataTransfer) => {
+    try {
+      onPickFiles(await filesFromDataTransfer(dataTransfer));
+    } catch (error) {
+      feedback.error(error instanceof Error ? error.message : "读取拖拽文件失败。");
+    }
   };
 
   const runDuplicateCheck = async (created: Item[]) => {
@@ -209,7 +218,7 @@ export function BatchUploadForm({
   };
 
   const onSubcategoryCreated = (cat: Category) => {
-    setExtraCategories((prev) => [...prev, cat]);
+    setExtraCategories((prev) => mergeCategories(prev, [cat]));
     setSubCategory(cat.id);
     setCreateOpen(false);
     router.refresh();
@@ -266,7 +275,7 @@ export function BatchUploadForm({
       <DropArea
         dragOver={dragOver}
         setDragOver={setDragOver}
-        onPick={onPickFiles}
+        onDropFiles={onDropFiles}
         onClick={() => fileInputRef.current?.click()}
         hasItems={items.length > 0}
       />
@@ -353,6 +362,14 @@ function Field({ label, children, className }: { label: string; children: React.
   );
 }
 
+function mergeCategories(
+  baseCategories: readonly Category[],
+  extraCategories: readonly Category[],
+): Category[] {
+  const pairs = [...baseCategories, ...extraCategories].map((category) => [category.id, category] as const);
+  return [...new Map(pairs).values()];
+}
+
 function PlainSelect({
   ariaLabel,
   value,
@@ -395,13 +412,13 @@ function PlainSelect({
 function DropArea({
   dragOver,
   setDragOver,
-  onPick,
+  onDropFiles,
   onClick,
   hasItems,
 }: {
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
-  onPick: (files: readonly File[]) => void;
+  onDropFiles: (dataTransfer: DataTransfer) => Promise<void>;
   onClick: () => void;
   hasItems: boolean;
 }) {
@@ -421,7 +438,7 @@ function DropArea({
       onDrop={(e) => {
         e.preventDefault();
         setDragOver(false);
-        onPick([...e.dataTransfer.files]);
+        void onDropFiles(e.dataTransfer);
       }}
       className={`dropzone-feedback ui-focus flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-content1 ${
         hasItems ? "p-4" : "p-10"

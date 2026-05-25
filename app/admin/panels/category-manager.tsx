@@ -6,6 +6,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
+import { Shuffle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button, Input, ListBox, Modal, Select } from "@/components/ui/heroui-compat";
 import {
@@ -15,6 +16,7 @@ import {
   updateCharacter,
 } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
+import { categoryIdFor, randomCategorySlug } from "@/lib/category-ids";
 import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/categories";
 import type { CharacterVisibility } from "@/lib/types";
 import { CharacterBackgroundUpload } from "./character-background-upload";
@@ -140,19 +142,32 @@ function CategoryEditorModal({
             <Modal.Body>
               <div className="grid gap-3">
                 <Field label={draft.mode.includes("character") ? "角色 ID" : "分类短名（slug）"}>
-                  <Input
-                    value={id}
-                    onChange={(e) => setId(e.target.value)}
-                    placeholder={draft.mode.includes("character") ? "角色 ID" : "分类短名"}
-                    disabled={draft.mode.startsWith("edit-character")}
-                    className="field-control px-3"
-                  />
-                </Field>
-                {draft.mode === "edit-category" ? (
-                  <Field label="实际 ID">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <Input
-                      value={draft.category.id}
-                      disabled
+                      value={id}
+                      onChange={(e) => setId(e.target.value)}
+                      placeholder={draft.mode.includes("character") ? "角色 ID" : "分类短名"}
+                      disabled={draft.mode.startsWith("edit-character")}
+                      className="field-control px-3"
+                    />
+                    {draft.mode === "add-category" ? (
+                      <Button
+                        type="button"
+                        variant="soft"
+                        onPress={() => setId(randomCategorySlug())}
+                        className="motion-press"
+                      >
+                        <Shuffle className="h-4 w-4" aria-hidden="true" />
+                        随机
+                      </Button>
+                    ) : null}
+                  </div>
+                </Field>
+                {draft.mode.includes("category") ? (
+                  <Field label="分类 ID">
+                    <Input
+                      value={categoryPreviewId(draft, id)}
+                      readOnly
                       className="field-control px-3 font-mono text-xs"
                     />
                   </Field>
@@ -207,6 +222,12 @@ function CategoryEditorModal({
 function initialId(draft: Draft) {
   if (draft.mode === "edit-character") return draft.character.id;
   if (draft.mode === "edit-category") return draft.category.slug;
+  return "";
+}
+
+function categoryPreviewId(draft: Draft, slug: string): string {
+  if (draft.mode === "edit-category") return draft.category.id;
+  if (draft.mode === "add-category" && slug.trim()) return categoryIdFor(draft.character.id, slug.trim());
   return "";
 }
 

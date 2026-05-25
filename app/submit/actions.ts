@@ -44,6 +44,8 @@ export async function createSubmission(formData: FormData): Promise<void> {
       height: uploaded.height,
       ext: uploaded.ext,
       hash: uploaded.hash,
+      visualHash: uploaded.visualHash,
+      visualHashV2: uploaded.visualHashV2,
       categoryId: category,
       tags,
       status: "pending",
