@@ -109,6 +109,7 @@ export const stickers = pgTable(
     ext: stickerExt("ext").notNull(),
     hash: text("hash").notNull(),
     visualHash: text("visualHash"),
+    visualHashV2: text("visualHashV2"),
     categoryId: text("categoryId")
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
@@ -135,6 +136,9 @@ export const stickers = pgTable(
     index("sticker_tags_gin_idx").using("gin", s.tags),
     index("sticker_visual_hash_active_idx")
       .on(s.visualHash)
+      .where(sql`${s.status} <> 'rejected'`),
+    index("sticker_visual_hash_v2_active_idx")
+      .on(s.visualHashV2)
       .where(sql`${s.status} <> 'rejected'`),
     uniqueIndex("sticker_hash_active_idx")
       .on(s.hash)

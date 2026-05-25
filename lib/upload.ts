@@ -15,6 +15,7 @@ export interface UploadedSticker {
   previewKey: string;
   hash: string;
   visualHash: string;
+  visualHashV2: string;
   width: number;
   height: number;
   ext: StickerExt;
@@ -46,6 +47,7 @@ export async function uploadStickerFile(file: File, categoryId: string): Promise
     previewKey: preview,
     hash: info.hash,
     visualHash: info.visualHash,
+    visualHashV2: info.visualHashV2,
     width: info.width,
     height: info.height,
     ext: info.ext,

@@ -176,7 +176,7 @@ function SimilarCandidateCard({ candidate }: { candidate: SimilarCandidate }) {
         <p className="truncate text-sm font-medium">{candidate.name}</p>
         <p className="truncate text-xs text-default-500">{candidate.id}</p>
         <div className="mt-1 flex flex-wrap gap-1">
-          <Chip size="sm" variant="soft"><Chip.Label>距离 {candidate.distance}</Chip.Label></Chip>
+          <Chip size="sm" variant="soft"><Chip.Label>距离 {formatDistance(candidate.distance)}</Chip.Label></Chip>
           <Chip size="sm" variant={candidate.status === "approved" ? "primary" : "secondary"}>
             <Chip.Label>{candidate.status === "approved" ? "已发布" : "待审核"}</Chip.Label>
           </Chip>
@@ -264,6 +264,10 @@ function initialSelection(categoryId: string, categories: readonly Category[]) {
     character: category?.characterId ?? "",
     subCategory: category ? categoryId : "",
   };
+}
+
+function formatDistance(distance: number): string {
+  return distance.toFixed(1);
 }
 
 interface SubmissionFieldsProps {

@@ -111,6 +111,7 @@ export async function uploadStickers(formData: FormData): Promise<void> {
         ext: uploaded.ext,
         hash: uploaded.hash,
         visualHash: uploaded.visualHash,
+        visualHashV2: uploaded.visualHashV2,
         categoryId: category,
         tags,
         status: "approved",

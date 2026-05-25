@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { stickers, users } from "@/drizzle/schema";
+import { categories, stickers, users } from "@/drizzle/schema";
 import { listAllCategories } from "@/lib/queries/categories";
 import { listCachedAllCharactersWithCounts } from "@/lib/queries/characters";
 import { findSimilarStickersForSources } from "@/lib/queries/similar-stickers";
@@ -33,6 +33,7 @@ function listPendingSubmissions() {
   return db
     .select({
       id: stickers.id,
+      characterId: categories.characterId,
       name: stickers.name,
       src: stickers.src,
       previewSrc: stickers.previewSrc,
@@ -40,7 +41,7 @@ function listPendingSubmissions() {
       height: stickers.height,
       ext: stickers.ext,
       hash: stickers.hash,
-      visualHash: stickers.visualHash,
+      visualHashV2: stickers.visualHashV2,
       categoryId: stickers.categoryId,
       tags: stickers.tags,
       submittedAt: stickers.submittedAt,
@@ -48,6 +49,7 @@ function listPendingSubmissions() {
       submitterLogin: users.githubLogin,
     })
     .from(stickers)
+    .innerJoin(categories, eq(stickers.categoryId, categories.id))
     .leftJoin(users, eq(stickers.submittedById, users.id))
     .where(eq(stickers.status, "pending"))
     .orderBy(asc(stickers.submittedAt));

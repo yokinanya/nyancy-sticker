@@ -44,6 +44,7 @@ export async function POST(request: Request) {
         ext: uploaded.ext,
         hash: uploaded.hash,
         visualHash: uploaded.visualHash,
+        visualHashV2: uploaded.visualHashV2,
         categoryId: category,
         tags,
         status: "pending",

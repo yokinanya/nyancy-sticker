@@ -119,7 +119,7 @@ function DuplicateGroupHeader({
       <div>
         <p className="text-sm font-semibold">疑似重复组</p>
         <p className="text-xs text-default-500">
-          {group.stickers.length} 张，最小距离 {group.minDistance}
+          {group.stickers.length} 张，最小距离 {formatDistance(group.minDistance)}
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -163,7 +163,9 @@ function DuplicateStickerCard({ sticker, isKeep, onKeep, onPreview }: DuplicateS
           <Chip size="sm" variant={sticker.status === "approved" ? "primary" : "secondary"}>
             <Chip.Label>{sticker.status === "approved" ? "已发布" : "待审核"}</Chip.Label>
           </Chip>
-          <Chip size="sm" variant="soft"><Chip.Label>距离 {sticker.nearestDistance}</Chip.Label></Chip>
+          <Chip size="sm" variant="soft">
+            <Chip.Label>距离 {formatDistance(sticker.nearestDistance)}</Chip.Label>
+          </Chip>
         </div>
         <Button size="sm" variant={isKeep ? "soft" : "ghost"} onPress={onKeep} className="mt-3">
           保留
@@ -223,6 +225,10 @@ function toggleKeepId(keepIds: readonly string[], id: string): string[] {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "处理重复项失败。";
+}
+
+function formatDistance(distance: number): string {
+  return distance.toFixed(1);
 }
 
 interface DuplicateGroupCardProps {

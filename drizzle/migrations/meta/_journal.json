@@ -57,6 +57,13 @@
       "when": 1779600100000,
       "tag": "0007_character_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779600200000,
+      "tag": "0008_visual_hash_v2",
+      "breakpoints": true
     }
   ]
 }

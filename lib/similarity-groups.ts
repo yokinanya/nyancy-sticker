@@ -1,10 +1,16 @@
-import { VISUAL_SIMILAR_DISTANCE, visualHashDistance } from "./visual-hash";
+import {
+  VISUAL_SIMILAR_SCORE_V2,
+  isSimilarFingerprint,
+  visualFingerprintDistance,
+  type VisualFingerprintDistance,
+} from "./visual-hash";
 
 export type ActiveStickerStatus = "approved" | "pending";
 
 export interface SimilaritySource {
   id: string;
-  visualHash: string;
+  characterId: string;
+  visualHashV2: string;
 }
 
 export interface SimilarityRow extends SimilaritySource {
@@ -26,6 +32,7 @@ export interface SimilarSticker {
   previewSrc: string;
   status: ActiveStickerStatus;
   distance: number;
+  perceptualDistance: number;
 }
 
 export interface DuplicateSticker extends SimilarityRow {
@@ -40,7 +47,6 @@ export interface DuplicateGroup {
 
 export interface SimilarityOptions {
   ignoredPairs?: ReadonlySet<string>;
-  maxDistance?: number;
 }
 
 export function findSimilarRows(
@@ -48,12 +54,12 @@ export function findSimilarRows(
   rows: readonly SimilarityRow[],
   options: SimilarityOptions = {},
 ): SimilarSticker[] {
-  const maxDistance = options.maxDistance ?? VISUAL_SIMILAR_DISTANCE;
   const matches = rows.flatMap((row) => {
     if (row.id === source.id) return [];
+    if (row.characterId !== source.characterId) return [];
     if (isIgnoredPair(source.id, row.id, options.ignoredPairs)) return [];
-    const distance = visualHashDistance(source.visualHash, row.visualHash);
-    return distance <= maxDistance ? [toSimilarSticker(row, distance)] : [];
+    const distance = visualFingerprintDistance(source.visualHashV2, row.visualHashV2);
+    return isSimilarFingerprint(distance) ? [toSimilarSticker(row, distance)] : [];
   });
   return matches.sort(compareSimilarStickers);
 }
@@ -64,9 +70,8 @@ export function buildDuplicateGroups(
 ): DuplicateGroup[] {
   const sets = new DisjointSets(rows.map((row) => row.id));
   const nearest = new Map<string, number>();
-  const maxDistance = options.maxDistance ?? VISUAL_SIMILAR_DISTANCE;
-  for (let left = 0; left < rows.length; left += 1) {
-    compareRowPairs(rows, left, sets, nearest, maxDistance, options.ignoredPairs);
+  for (const group of rowsByCharacter(rows).values()) {
+    compareCharacterRows(group, sets, nearest, options.ignoredPairs);
   }
   return collectDuplicateGroups(rows, sets, nearest);
 }
@@ -81,22 +86,40 @@ export function normalizePair(leftId: string, rightId: string): readonly [string
   return leftId < rightId ? [leftId, rightId] : [rightId, leftId];
 }
 
+function compareCharacterRows(
+  rows: readonly SimilarityRow[],
+  sets: DisjointSets,
+  nearest: Map<string, number>,
+  ignoredPairs: ReadonlySet<string> | undefined,
+) {
+  for (let left = 0; left < rows.length; left += 1) {
+    compareRowPairs(rows, left, sets, nearest, ignoredPairs);
+  }
+}
+
 function compareRowPairs(
   rows: readonly SimilarityRow[],
   left: number,
   sets: DisjointSets,
   nearest: Map<string, number>,
-  maxDistance: number,
   ignoredPairs: ReadonlySet<string> | undefined,
 ) {
   for (let right = left + 1; right < rows.length; right += 1) {
     if (isIgnoredPair(rows[left].id, rows[right].id, ignoredPairs)) continue;
-    const distance = visualHashDistance(rows[left].visualHash, rows[right].visualHash);
-    if (distance > maxDistance) continue;
+    const distance = visualFingerprintDistance(rows[left].visualHashV2, rows[right].visualHashV2);
+    if (!isSimilarFingerprint(distance)) continue;
     sets.union(rows[left].id, rows[right].id);
-    rememberNearest(nearest, rows[left].id, distance);
-    rememberNearest(nearest, rows[right].id, distance);
+    rememberNearest(nearest, rows[left].id, distance.score);
+    rememberNearest(nearest, rows[right].id, distance.score);
   }
+}
+
+function rowsByCharacter(rows: readonly SimilarityRow[]): Map<string, SimilarityRow[]> {
+  const grouped = new Map<string, SimilarityRow[]>();
+  for (const row of rows) {
+    grouped.set(row.characterId, [...(grouped.get(row.characterId) ?? []), row]);
+  }
+  return grouped;
 }
 
 function isIgnoredPair(
@@ -129,7 +152,7 @@ function toDuplicateGroup(
 ): DuplicateGroup {
   const stickers = rows.map((row) => ({
     ...row,
-    nearestDistance: nearest.get(row.id) ?? VISUAL_SIMILAR_DISTANCE,
+    nearestDistance: nearest.get(row.id) ?? VISUAL_SIMILAR_SCORE_V2,
   }));
   const sorted = stickers.sort(compareDuplicateStickers);
   return {
@@ -139,13 +162,14 @@ function toDuplicateGroup(
   };
 }
 
-function toSimilarSticker(row: SimilarityRow, distance: number): SimilarSticker {
+function toSimilarSticker(row: SimilarityRow, distance: VisualFingerprintDistance): SimilarSticker {
   return {
     id: row.id,
     name: row.name,
     previewSrc: row.previewSrc,
     status: row.status,
-    distance,
+    distance: distance.score,
+    perceptualDistance: distance.perceptual,
   };
 }
 
@@ -155,7 +179,12 @@ function rememberNearest(map: Map<string, number>, id: string, distance: number)
 }
 
 function compareSimilarStickers(left: SimilarSticker, right: SimilarSticker) {
-  return left.distance - right.distance || left.name.localeCompare(right.name, "zh-CN");
+  return (
+    left.distance - right.distance ||
+    left.perceptualDistance - right.perceptualDistance ||
+    left.name.localeCompare(right.name, "zh-CN") ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 function compareDuplicateGroups(left: DuplicateGroup, right: DuplicateGroup) {
