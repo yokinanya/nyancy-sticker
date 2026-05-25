@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
 import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
+import { revalidateStickerViews } from "@/lib/revalidate-stickers";
 import { uploadStickerFile } from "@/lib/upload";
 
 export const runtime = "nodejs";
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       throw err;
     }
 
+    revalidateStickerViews();
     return NextResponse.json({ ok: true, id: uploaded.hash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "投稿失败。";
