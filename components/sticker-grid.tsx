@@ -17,13 +17,15 @@ const PRIORITY_COUNT = 6;
 interface Props {
   stickers: Sticker[];
   onOpen: (s: Sticker) => void;
+  selectedIds?: ReadonlySet<string>;
+  isSelectionMode?: boolean;
 }
 
 /**
  * 虚拟滚动网格：根据容器宽度动态计算列数，逐行渲染。
  * 每行高度固定（aspect-square + gap），保证虚拟化命中。
  */
-export function StickerGrid({ stickers, onOpen }: Props) {
+export function StickerGrid({ stickers, onOpen, selectedIds, isSelectionMode = false }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(4);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -69,8 +71,10 @@ export function StickerGrid({ stickers, onOpen }: Props) {
           rows={rowVirtualizer.getVirtualItems()}
           stickers={stickers}
           columns={columns}
+          isSelectionMode={isSelectionMode}
           rowHeight={rowHeight}
           scrollMargin={scrollMargin}
+          selectedIds={selectedIds}
           onOpen={onOpen}
         />
       </div>
@@ -92,15 +96,19 @@ function VirtualRows({
   rows,
   stickers,
   columns,
+  isSelectionMode,
   rowHeight,
   scrollMargin,
+  selectedIds,
   onOpen,
 }: {
   rows: VirtualItem[];
   stickers: readonly Sticker[];
   columns: number;
+  isSelectionMode: boolean;
   rowHeight: number;
   scrollMargin: number;
+  selectedIds?: ReadonlySet<string>;
   onOpen: (s: Sticker) => void;
 }) {
   return rows.map((row) => {
@@ -128,6 +136,8 @@ function VirtualRows({
             key={sticker.id}
             sticker={sticker}
             onOpen={onOpen}
+            isSelectable={isSelectionMode}
+            isSelected={selectedIds?.has(sticker.id) ?? false}
             priority={start + colIdx < PRIORITY_COUNT}
           />
         ))}

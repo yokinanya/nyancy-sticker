@@ -2,6 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  BatchDownloadBar,
+  SelectionModeToggle,
+  useStickerSelection,
+  type StickerSelection,
+} from "./batch-download-controls";
 import { SearchBar } from "./search-bar";
 import { CategoryTabs } from "./category-tabs";
 import { TagFilter } from "./tag-filter";
@@ -24,12 +30,14 @@ const StickerPreviewModal = dynamic(
 interface Props {
   manifest: Manifest;
   characterId?: string;
+  characterName?: string;
   hideTopLevel?: boolean;
 }
 
 export function StickerGallery({
   manifest,
   characterId = "all",
+  characterName = "stickers",
   hideTopLevel = false,
 }: Props) {
   const { categories, stickers } = manifest;
@@ -46,28 +54,41 @@ export function StickerGallery({
   );
   const [active, setActive] = useState<Sticker | null>(null);
   const [open, setOpen] = useState(false);
+  const selection = useStickerSelection(filtered, characterName);
+  const { isSelectionMode, toggle } = selection;
   const onOpen = useCallback((s: Sticker) => {
+    if (isSelectionMode) {
+      toggle(s.id);
+      return;
+    }
     setActive(s);
     setOpen(true);
-  }, []);
+  }, [isSelectionMode, toggle]);
 
   useGlobalSearchShortcut();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={selection.isSelectionMode ? "flex flex-col gap-4 pb-24" : "flex flex-col gap-4"}>
       <GalleryControls
         characterId={characterId}
         categories={categories}
         counts={derived.categoryCounts}
         filters={filters}
         hideTopLevel={hideTopLevel}
+        selection={selection}
         topTags={topTags}
       />
       {filtered.length === 0 ? (
         <EmptyState />
       ) : (
-        <StickerGrid stickers={filtered} onOpen={onOpen} />
+        <StickerGrid
+          stickers={filtered}
+          onOpen={onOpen}
+          isSelectionMode={selection.isSelectionMode}
+          selectedIds={selection.selectedIds}
+        />
       )}
+      <BatchDownloadBar selection={selection} />
       <StickerPreviewModal sticker={active} isOpen={open} onOpenChange={setOpen} />
     </div>
   );
@@ -208,6 +229,7 @@ function GalleryControls({
   counts,
   filters,
   hideTopLevel,
+  selection,
   topTags,
 }: {
   characterId: string;
@@ -215,15 +237,17 @@ function GalleryControls({
   counts: Record<string, number>;
   filters: GalleryFilters;
   hideTopLevel: boolean;
+  selection: StickerSelection;
   topTags: CategoryTagCount[];
 }) {
   return (
     <>
-      <SearchBar
-        key={characterId}
-        query={filters.query}
-        onQueryChange={filters.setQuery}
-      />
+      <div className="flex items-center gap-2">
+        <SelectionModeToggle selection={selection} />
+        <div className="min-w-0 flex-1">
+          <SearchBar key={characterId} query={filters.query} onQueryChange={filters.setQuery} />
+        </div>
+      </div>
       <CategoryTabs
         categories={categories}
         counts={counts}

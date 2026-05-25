@@ -30,6 +30,7 @@ export default async function CharacterGalleryPage({ params }: PageProps) {
     <div className="motion-page page-shell flex max-w-7xl flex-col">
       <StickerGallery
         characterId={character.id}
+        characterName={character.name}
         manifest={{ categories, stickers }}
         hideTopLevel
       />

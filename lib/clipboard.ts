@@ -69,3 +69,31 @@ export async function downloadFile(src: string, filename: string) {
   a.click();
   document.body.removeChild(a);
 }
+
+export async function downloadStickerZip(ids: readonly string[], filename: string) {
+  const response = await fetch("/api/download/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!response.ok) throw new Error(await readDownloadError(response));
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function readDownloadError(response: Response) {
+  const body = await response.json().catch(() => null);
+  if (body && typeof body.error === "string") return body.error;
+  return `批量下载失败：${response.status}`;
+}
