@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { categoryIdFor } from "@/lib/category-ids";
 import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireAdmin, requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
@@ -150,10 +151,10 @@ export async function addCategory(formData: FormData): Promise<void> {
   const characterId = readText(formData, "characterId");
   const slug = readText(formData, "categoryId");
   await ensureCharacterExists(characterId);
-  await ensureCategoryIdAvailable(slug);
   await ensureCategorySlugAvailable(characterId, slug);
+  const id = categoryIdFor(characterId, slug);
   await db.insert(categories).values({
-    id: slug,
+    id,
     name: readText(formData, "categoryName"),
     slug,
     characterId,
@@ -283,11 +284,6 @@ async function ensureCategorySlugAvailable(characterId: string, slug: string, cu
   if (existing && existing.id !== currentId) {
     throw new Error(`该角色下分类短名已存在：${slug}`);
   }
-}
-
-async function ensureCategoryIdAvailable(id: string): Promise<void> {
-  const existing = await db.query.categories.findFirst({ where: eq(categories.id, id) });
-  if (existing) throw new Error(`分类实际 ID 已存在：${id}`);
 }
 
 function splitTags(value: string): string[] {

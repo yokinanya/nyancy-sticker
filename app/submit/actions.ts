@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { categoryIdFor } from "@/lib/category-ids";
 import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
@@ -90,10 +91,10 @@ export async function createSubcategoryForSubmit(
     where: and(eq(categories.characterId, characterId), eq(categories.slug, rawId)),
   });
   if (existing) throw new Error(`该角色下分类短名已存在：${rawId}`);
-  await ensureCategoryIdAvailable(rawId);
+  const id = categoryIdFor(characterId, rawId);
 
   await db.insert(categories).values({
-    id: rawId,
+    id,
     name,
     slug: rawId,
     characterId,
@@ -104,15 +105,10 @@ export async function createSubcategoryForSubmit(
   revalidatePath("/");
   revalidatePath("/admin");
   const created = await db.query.categories.findFirst({
-    where: and(eq(categories.characterId, characterId), eq(categories.slug, rawId)),
+    where: eq(categories.id, id),
   });
   if (!created) throw new Error(`分类创建失败：${rawId}`);
   return { id: created.id, name, slug: rawId, characterId };
-}
-
-async function ensureCategoryIdAvailable(id: string): Promise<void> {
-  const existing = await db.query.categories.findFirst({ where: eq(categories.id, id) });
-  if (existing) throw new Error(`分类实际 ID 已存在：${id}`);
 }
 
 function splitTags(value: string): string[] {
