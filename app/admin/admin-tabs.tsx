@@ -4,4 +4,5 @@ export type AdminTab =
   | "duplicates"
   | "categories"
   | "upload"
+  | "notice"
   | "users";

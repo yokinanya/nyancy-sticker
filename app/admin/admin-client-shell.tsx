@@ -15,10 +15,11 @@ const BASE_TABS = [
 ] as const;
 
 const USERS_TAB = { key: "users", title: "用户" } as const;
+const NOTICE_TAB = { key: "notice", title: "公告" } as const;
 const TAB_LIST_CLASS = "admin-tab-list";
 const TAB_CLASS = "admin-tab ui-focus";
 
-type AdminTabItem = (typeof BASE_TABS)[number] | typeof USERS_TAB;
+type AdminTabItem = (typeof BASE_TABS)[number] | typeof USERS_TAB | typeof NOTICE_TAB;
 
 function AdminTabButton({ item, pendingCount }: { item: AdminTabItem; pendingCount: number }) {
   const shouldShowPendingBadge = item.key === "submissions" && pendingCount > 0;
@@ -45,7 +46,10 @@ interface Props {
 export function AdminClientShell({ initialTab, pendingCount, isAdmin, panel }: Props) {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState(initialTab);
-  const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, USERS_TAB] : BASE_TABS), [isAdmin]);
+  const tabs = useMemo(
+    () => (isAdmin ? [...BASE_TABS, NOTICE_TAB, USERS_TAB] : BASE_TABS),
+    [isAdmin],
+  );
 
   const selectTab = (nextTab: AdminTab) => {
     if (nextTab === selectedTab) return;

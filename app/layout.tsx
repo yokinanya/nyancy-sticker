@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
+import { SiteWarningBanner } from "@/components/site-warning-banner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ export default async function RootLayout({
         <Providers lang={lang}>
           <div className="relative z-10 flex min-h-dvh flex-col">
             <SiteHeader />
+            <SiteWarningBanner />
             <main className="app-shell flex-1">
               {children}
             </main>

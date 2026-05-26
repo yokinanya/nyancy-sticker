@@ -135,10 +135,9 @@ export async function updateSticker(formData: FormData): Promise<void> {
   const tagsValue = formData.get("editTags");
   const tags =
     typeof tagsValue === "string" && tagsValue.trim() ? splitTags(tagsValue) : [];
-  const approvalFields =
-    status === "approved"
-      ? { approvedById: session.user.id, approvedAt: new Date(), rejectionReason: null }
-      : { approvedById: null, approvedAt: null, rejectionReason: null };
+  const approvalFields = status === "approved"
+    ? { approvedById: session.user.id, approvedAt: new Date(), rejectionReason: null }
+    : { approvedById: null, approvedAt: null, rejectionReason: null };
 
   await db
     .update(stickers)
@@ -232,7 +231,6 @@ export async function deleteCharacter(formData: FormData): Promise<void> {
   await db.delete(characters).where(eq(characters.id, id));
   revalidateAdminPages();
 }
-
 async function ensureSubcategoryExists(id: string): Promise<void> {
   const found = await db.query.categories.findFirst({ where: eq(categories.id, id) });
   if (!found) throw new Error(`分类不存在：${id}`);
@@ -243,7 +241,6 @@ function readSelectedIds(formData: FormData): Set<string> {
   if (ids.length === 0) throw new Error("请先选择至少一张表情。");
   return new Set(ids);
 }
-
 function readText(formData: FormData, key: string): string {
   const value = formData.get(key);
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -257,7 +254,6 @@ function readStickerStatus(formData: FormData): "approved" | "pending" | "reject
   if (status === "approved" || status === "pending" || status === "rejected") return status;
   throw new Error(`无效状态：${status}`);
 }
-
 async function ensureCharacterExists(id: string): Promise<void> {
   const found = await db.query.characters.findFirst({ where: eq(characters.id, id) });
   if (!found) throw new Error(`角色不存在：${id}`);

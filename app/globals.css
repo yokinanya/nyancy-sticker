@@ -299,6 +299,43 @@ body {
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(var(--glass-saturate));
 }
 
+.site-warning-banner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.site-warning-banner > div {
+  pointer-events: auto;
+  width: min(calc(100% - 2rem), 36rem);
+  border: 1px solid rgb(var(--warning) / 0.28);
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(135deg, rgb(var(--warning) / 0.15), rgb(var(--surface-raised) / 0.72)),
+    var(--glass-bg);
+  color: rgb(var(--warning));
+  box-shadow:
+    var(--glass-shadow-popover),
+    inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(calc(var(--glass-blur) + 2px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 2px)) saturate(var(--glass-saturate));
+}
+
+.site-warning-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.site-warning-marquee-content {
+  display: inline-block;
+  min-width: 100%;
+  padding-left: 100%;
+  animation: warning-marquee 18s linear infinite;
+}
+
 .sticker-tray {
   background:
     linear-gradient(135deg, rgb(var(--surface-raised) / 0.72), rgb(var(--surface-muted) / 0.46)),
@@ -682,6 +719,15 @@ body {
   }
 }
 
+@keyframes warning-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-page,
   .motion-panel,
@@ -692,6 +738,16 @@ body {
   .motion-success-pulse,
   .motion-shake,
   .motion-toast {
+    animation: none;
+  }
+
+  .site-warning-marquee {
+    white-space: normal;
+  }
+
+  .site-warning-marquee-content {
+    min-width: 0;
+    padding-left: 0;
     animation: none;
   }
 

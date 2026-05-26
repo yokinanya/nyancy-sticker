@@ -9,6 +9,7 @@ import { DuplicatesPanel } from "./panels/duplicates-panel";
 import { CategoriesPanel } from "./panels/categories-panel";
 import { UploadFormPanel } from "./panels/upload-form-panel";
 import { UsersPanel } from "./panels/users-panel";
+import { NoticePanel } from "./panels/notice-panel";
 
 export const metadata = {
   title: "后台管理 - 猫猫冲表情站",
@@ -32,7 +33,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
 
   const sp = await searchParams;
   const rawTab = single(sp.tab);
-  const validTabs: readonly AdminTab[] = isAdmin ? [...BASE_TABS, "users"] : BASE_TABS;
+  const validTabs: readonly AdminTab[] = isAdmin ? [...BASE_TABS, "notice", "users"] : BASE_TABS;
   const tab: AdminTab = (validTabs as readonly string[]).includes(rawTab ?? "")
     ? (rawTab as AdminTab)
     : "submissions";
@@ -61,6 +62,7 @@ function renderPanel(
   if (tab === "duplicates") return <DuplicatesPanel />;
   if (tab === "categories") return <CategoriesPanel isAdmin={isAdmin} />;
   if (tab === "upload") return <UploadFormPanel />;
+  if (tab === "notice") return <NoticePanel />;
   return <UsersPanel searchParams={searchParams} />;
 }
 
@@ -97,6 +99,7 @@ function panelLoadingLabel(tab: AdminTab) {
     duplicates: "正在加载查重结果...",
     categories: "正在加载分类...",
     upload: "正在加载上传面板...",
+    notice: "正在加载公告设置...",
     users: "正在加载用户列表...",
   };
   return labels[tab];

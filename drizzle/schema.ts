@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  boolean,
   pgEnum,
   pgTable,
   primaryKey,
@@ -168,8 +169,21 @@ export const stickerSimilarityDecisions = pgTable(
   ],
 );
 
+export const siteNotices = pgTable("site_notice", {
+  id: text("id").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  message: text("message").notNull().default(""),
+  linkLabel: text("linkLabel"),
+  linkUrl: text("linkUrl"),
+  updatedById: text("updatedById").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updatedAt", { mode: "date", withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Character = typeof characters.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Sticker = typeof stickers.$inferSelect;
 export type NewSticker = typeof stickers.$inferInsert;
+export type SiteNotice = typeof siteNotices.$inferSelect;
