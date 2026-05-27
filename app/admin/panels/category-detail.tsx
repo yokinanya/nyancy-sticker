@@ -101,6 +101,7 @@ function RoleOverview({
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <SummaryItem label="子分类" value={`${childCount} 个`} />
+        <SummaryItem label="排序" value={`${role.sortOrder}`} />
         <SummaryItem label="创建者" value={creatorName(role)} />
         <SummaryItem label="创建时间" value={formatDate(role.createdAt)} />
         <SummaryItem label="背景图" value={role.backgroundImageUrl ? "已设置" : "未设置"} />
@@ -154,6 +155,7 @@ function SubcategoryRows({
           <tr>
             <th className="p-3">名称</th>
             <th className="p-3">短名（slug）</th>
+            <th className="p-3">排序</th>
             <th className="p-3">贴纸</th>
             <th className="p-3">创建者</th>
             <th className="p-3">创建时间</th>
@@ -193,6 +195,7 @@ function SubcategoryRow({
     <tr className="motion-list-item border-b border-default-100 last:border-0 hover:bg-primary/6">
       <td className="p-3 font-medium">{category.name}</td>
       <td className="p-3 font-mono text-xs text-default-500">{category.slug}</td>
+      <td className="p-3 text-default-500">{category.sortOrder}</td>
       <td className="p-3 text-default-500">{category.count} 张</td>
       <td className="p-3 text-default-500">{creatorName(category)}</td>
       <td className="p-3 text-default-500">{formatDate(category.createdAt)}</td>

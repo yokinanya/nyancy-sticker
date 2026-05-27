@@ -33,11 +33,12 @@ export async function listApprovedStickersByCharacter(
       id: categories.id,
       name: categories.name,
       slug: categories.slug,
+      sortOrder: categories.sortOrder,
       characterId: categories.characterId,
     })
     .from(categories)
     .where(eq(categories.characterId, characterId))
-    .orderBy(asc(categories.slug));
+    .orderBy(asc(categories.sortOrder), asc(categories.slug));
 
   if (allCategories.length === 0) return { stickers: [], categories: [] };
 
@@ -63,6 +64,7 @@ export async function listApprovedStickersByCharacter(
     id: c.id,
     name: c.name,
     slug: c.slug,
+    sortOrder: c.sortOrder,
     characterId: c.characterId,
   }));
 
@@ -78,7 +80,7 @@ export async function listCharacterGallery(
 }> {
   const result = await db.execute<CharacterGalleryRow>(sql`
     WITH selected_categories AS (
-      SELECT id, name, slug, "characterId"
+      SELECT id, name, slug, "sortOrder", "characterId"
       FROM "category"
       WHERE "characterId" = ${characterId}
     )
@@ -97,8 +99,8 @@ export async function listCharacterGallery(
       COALESCE(
         (
           SELECT jsonb_agg(
-            jsonb_build_object('id', id, 'name', name, 'slug', slug, 'characterId', "characterId")
-            ORDER BY slug ASC
+            jsonb_build_object('id', id, 'name', name, 'slug', slug, 'sortOrder', "sortOrder", 'characterId', "characterId")
+            ORDER BY "sortOrder" ASC, slug ASC
           )
           FROM selected_categories
         ),
@@ -158,6 +160,7 @@ interface RawCategory {
   id: string;
   name: string;
   slug: string;
+  sortOrder: number;
   characterId: string;
 }
 
@@ -173,6 +176,7 @@ function normalizeCategory(category: RawCategory): Category {
     id: category.id,
     name: category.name,
     slug: category.slug,
+    sortOrder: category.sortOrder,
     characterId: category.characterId,
   };
 }

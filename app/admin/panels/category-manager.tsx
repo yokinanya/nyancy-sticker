@@ -17,6 +17,7 @@ import {
 } from "@/app/admin/actions";
 import { useFeedback } from "@/components/feedback";
 import { categoryIdFor, randomCategorySlug } from "@/lib/category-ids";
+import { nextSortOrder } from "@/lib/sort-order";
 import type { CategoryWithCount, CharacterWithCount } from "@/lib/queries/categories";
 import type { CharacterVisibility } from "@/lib/types";
 import { CharacterBackgroundUpload } from "./character-background-upload";
@@ -88,6 +89,8 @@ export function CategoryManager({ canAddRole, categories, characters }: Props) {
       </div>
       {draft ? (
         <CategoryEditorModal
+          categories={categories}
+          characters={characters}
           draft={draft}
           pending={pending}
           onClose={() => setDraft(null)}
@@ -100,12 +103,16 @@ export function CategoryManager({ canAddRole, categories, characters }: Props) {
 }
 
 function CategoryEditorModal({
+  categories,
+  characters,
   draft,
   pending,
   onClose,
   onCreated,
   onSubmit,
 }: {
+  categories: readonly CategoryWithCount[];
+  characters: readonly CharacterWithCount[];
   draft: Draft;
   pending: boolean;
   onClose: () => void;
@@ -114,6 +121,7 @@ function CategoryEditorModal({
 }) {
   const [id, setId] = useState(initialId(draft));
   const [name, setName] = useState(initialName(draft));
+  const [sortOrder, setSortOrder] = useState(initialSortOrder(draft, characters, categories));
   const [visibility, setVisibility] = useState(initialVisibility(draft));
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialBackgroundImageUrl(draft));
   const [uploadingBackground, setUploadingBackground] = useState(false);
@@ -123,9 +131,17 @@ function CategoryEditorModal({
   const save = () => {
     const fd = new FormData();
     if (draft.mode.includes("character")) {
-      saveCharacter(draft, fd, id, name, visibility, backgroundImageUrl, onSubmit, onCreated);
+      saveCharacter(draft, fd, {
+        backgroundImageUrl,
+        id,
+        name,
+        onCreated,
+        onSubmit,
+        sortOrder,
+        visibility,
+      });
     }
-    else saveCategory(draft, fd, id, name, onSubmit);
+    else saveCategory(draft, fd, { name, onSubmit, slug: id, sortOrder });
   };
 
   return (
@@ -177,6 +193,16 @@ function CategoryEditorModal({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="显示名"
+                    className="field-control px-3"
+                  />
+                </Field>
+                <Field label="排序（越小越靠前）">
+                  <Input
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    placeholder="0"
+                    type="number"
+                    step={1}
                     className="field-control px-3"
                   />
                 </Field>
@@ -243,32 +269,68 @@ function initialBackgroundImageUrl(draft: Draft) {
   return draft.character?.backgroundImageUrl ?? "";
 }
 
+function initialSortOrder(
+  draft: Draft,
+  characters: readonly CharacterWithCount[],
+  categories: readonly CategoryWithCount[],
+) {
+  if (draft.mode === "edit-character") return String(draft.character.sortOrder);
+  if (draft.mode === "edit-category") return String(draft.category.sortOrder);
+  if (draft.mode === "add-category") {
+    const siblings = categories.filter((category) => category.characterId === draft.character.id);
+    return String(nextSortOrder(siblings));
+  }
+  return String(nextSortOrder(characters));
+}
+
 function saveCharacter(
   draft: Draft,
   fd: FormData,
-  id: string,
-  name: string,
-  visibility: CharacterVisibility,
-  backgroundImageUrl: string,
-  onSubmit: SubmitHandler,
-  onCreated: (id: string) => void,
+  options: {
+    backgroundImageUrl: string;
+    id: string;
+    name: string;
+    onCreated: (id: string) => void;
+    onSubmit: SubmitHandler;
+    sortOrder: string;
+    visibility: CharacterVisibility;
+  },
 ) {
-  fd.set("characterId", id);
-  fd.set("characterName", name);
-  fd.set("characterVisibility", visibility);
-  fd.set("characterBackgroundImageUrl", backgroundImageUrl);
-  onSubmit(draft.mode === "edit-character" ? updateCharacter : addCharacter, fd, `${getDraftTitle(draft)}：${id}`);
-  if (draft.mode === "add-character") onCreated(id);
+  fd.set("characterId", options.id);
+  fd.set("characterName", options.name);
+  fd.set("characterSortOrder", options.sortOrder);
+  fd.set("characterVisibility", options.visibility);
+  fd.set("characterBackgroundImageUrl", options.backgroundImageUrl);
+  options.onSubmit(
+    draft.mode === "edit-character" ? updateCharacter : addCharacter,
+    fd,
+    `${getDraftTitle(draft)}：${options.id}`,
+  );
+  if (draft.mode === "add-character") options.onCreated(options.id);
 }
 
-function saveCategory(draft: Draft, fd: FormData, slug: string, name: string, onSubmit: SubmitHandler) {
+function saveCategory(
+  draft: Draft,
+  fd: FormData,
+  options: {
+    name: string;
+    onSubmit: SubmitHandler;
+    slug: string;
+    sortOrder: string;
+  },
+) {
   const categoryId = draft.category?.id ?? "";
   const characterId = draft.character?.id ?? draft.category?.characterId ?? "";
-  fd.set("categoryId", categoryId || slug);
-  fd.set("categorySlug", slug);
-  fd.set("categoryName", name);
+  fd.set("categoryId", categoryId || options.slug);
+  fd.set("categorySlug", options.slug);
+  fd.set("categoryName", options.name);
+  fd.set("categorySortOrder", options.sortOrder);
   fd.set("characterId", characterId);
-  onSubmit(draft.mode === "edit-category" ? updateCategory : addCategory, fd, `${getDraftTitle(draft)}：${slug}`);
+  options.onSubmit(
+    draft.mode === "edit-category" ? updateCategory : addCategory,
+    fd,
+    `${getDraftTitle(draft)}：${options.slug}`,
+  );
 }
 
 function VisibilitySelect({

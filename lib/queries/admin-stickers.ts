@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories, stickers, users } from "@/drizzle/schema";
+import { categories, characters, stickers, users } from "@/drizzle/schema";
 
 export type StickerStatus = "approved" | "pending" | "rejected";
 
@@ -81,6 +81,7 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       })
       .from(stickers)
       .leftJoin(categories, eq(stickers.categoryId, categories.id))
+      .leftJoin(characters, eq(categories.characterId, characters.id))
       .leftJoin(users, eq(stickers.submittedById, users.id))
       .where(where)
       .orderBy(...orderBy)
@@ -90,6 +91,7 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       .select({ c: count() })
       .from(stickers)
       .leftJoin(categories, eq(stickers.categoryId, categories.id))
+      .leftJoin(characters, eq(categories.characterId, characters.id))
       .leftJoin(users, eq(stickers.submittedById, users.id))
       .where(where),
   ]);
@@ -154,15 +156,27 @@ function buildOrderBy(sort: ListOptions["sort"]) {
   if (sort === "oldest") return [asc(stickers.submittedAt)];
   if (sort === "name") return [asc(stickers.name)];
   if (sort === "name-desc") return [desc(stickers.name)];
-  if (sort === "category") return [asc(stickers.categoryId), desc(stickers.submittedAt)];
-  if (sort === "category-desc") return [desc(stickers.categoryId), desc(stickers.submittedAt)];
+  if (sort === "category") return [
+    asc(characters.sortOrder),
+    asc(categories.sortOrder),
+    asc(categories.slug),
+    desc(stickers.submittedAt),
+  ];
+  if (sort === "category-desc") return [
+    desc(characters.sortOrder),
+    desc(categories.sortOrder),
+    desc(categories.slug),
+    desc(stickers.submittedAt),
+  ];
   if (sort === "status") return [asc(stickers.status), desc(stickers.submittedAt)];
   if (sort === "status-desc") return [desc(stickers.status), desc(stickers.submittedAt)];
   if (sort === "submitter") return [asc(users.githubLogin), asc(users.name)];
   if (sort === "submitter-desc") return [desc(users.githubLogin), desc(users.name)];
   if (sort === "newest") return [desc(stickers.submittedAt)];
   return [
+    asc(characters.sortOrder),
     asc(categories.characterId),
+    asc(categories.sortOrder),
     asc(categories.slug),
     desc(stickers.submittedAt),
   ];

@@ -72,6 +72,7 @@ export const verificationTokens = pgTable(
 export const characters = pgTable("character", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  sortOrder: integer("sortOrder").notNull().default(0),
   visibility: characterVisibility("visibility").notNull().default("public"),
   backgroundImageUrl: text("backgroundImageUrl"),
   createdById: text("createdById").references(() => users.id, { onDelete: "set null" }),
@@ -84,6 +85,7 @@ export const categories = pgTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    sortOrder: integer("sortOrder").notNull().default(0),
     characterId: text("characterId")
       .notNull()
       .references(() => characters.id, { onDelete: "restrict" }),

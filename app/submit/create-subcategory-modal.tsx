@@ -37,6 +37,7 @@ export function CreateSubcategoryModal({ characterId, parentName, onClose, onCre
           id: result.id,
           name: result.name,
           slug: result.slug,
+          sortOrder: result.sortOrder,
           characterId: result.characterId,
         });
       } catch (e) {

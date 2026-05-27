@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
-import { asc, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories } from "@/drizzle/schema";
+import { categories, characters } from "@/drizzle/schema";
 import type { Category, CharacterVisibility } from "@/lib/types";
 
 export const CATEGORY_TREE_CACHE_TAG = "category-tree";
@@ -12,14 +12,22 @@ export async function listAllCategories(): Promise<Category[]> {
       id: categories.id,
       name: categories.name,
       slug: categories.slug,
+      sortOrder: categories.sortOrder,
       characterId: categories.characterId,
     })
     .from(categories)
-    .orderBy(asc(categories.characterId), asc(categories.slug));
-  return rows.map(({ id, name, slug, characterId }) => ({
+    .innerJoin(characters, eq(categories.characterId, characters.id))
+    .orderBy(
+      asc(characters.sortOrder),
+      asc(categories.characterId),
+      asc(categories.sortOrder),
+      asc(categories.slug),
+    );
+  return rows.map(({ id, name, slug, sortOrder, characterId }) => ({
     id,
     name,
     slug,
+    sortOrder,
     characterId,
   }));
 }
@@ -34,6 +42,7 @@ export interface CategoryWithCount {
   id: string;
   name: string;
   slug: string;
+  sortOrder: number;
   characterId: string;
   characterName: string;
   count: number;
@@ -47,6 +56,7 @@ export interface CharacterWithCount {
   name: string;
   visibility: CharacterVisibility;
   backgroundImageUrl: string | null;
+  sortOrder: number;
   count: number;
   createdAt: Date;
   createdByName: string | null;
@@ -59,6 +69,7 @@ export async function listCharactersForCategoryManager(): Promise<CharacterWithC
     name: string;
     visibility: CharacterVisibility;
     backgroundImageUrl: string | null;
+    sortOrder: number;
     count: number;
     createdAt: Date;
     createdByName: string | null;
@@ -69,6 +80,7 @@ export async function listCharactersForCategoryManager(): Promise<CharacterWithC
       ch.name,
       ch.visibility,
       ch."backgroundImageUrl",
+      ch."sortOrder",
       COUNT(s.id)::int AS count,
       ch."createdAt",
       u.name AS "createdByName",
@@ -77,14 +89,15 @@ export async function listCharactersForCategoryManager(): Promise<CharacterWithC
     LEFT JOIN "category" c ON c."characterId" = ch.id
     LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
     LEFT JOIN "user" u ON ch."createdById" = u.id
-    GROUP BY ch.id, ch.name, ch.visibility, ch."backgroundImageUrl", ch."createdAt", u.name, u."githubLogin"
-    ORDER BY ch.id ASC
+    GROUP BY ch.id, ch.name, ch.visibility, ch."backgroundImageUrl", ch."sortOrder", ch."createdAt", u.name, u."githubLogin"
+    ORDER BY ch."sortOrder" ASC, ch.id ASC
   `);
   return result.rows.map((r) => ({
     id: r.id,
     name: r.name,
     visibility: r.visibility,
     backgroundImageUrl: r.backgroundImageUrl,
+    sortOrder: Number(r.sortOrder),
     count: Number(r.count),
     createdAt: new Date(r.createdAt),
     createdByName: r.createdByName,
@@ -101,6 +114,7 @@ export async function listCategoriesWithCounts(): Promise<CategoryWithCount[]> {
     id: string;
     name: string;
     slug: string;
+    sortOrder: number;
     characterId: string;
     characterName: string;
     count: number;
@@ -112,6 +126,7 @@ export async function listCategoriesWithCounts(): Promise<CategoryWithCount[]> {
       c.id,
       c.name,
       c.slug,
+      c."sortOrder",
       c."characterId",
       ch.name AS "characterName",
       COUNT(s.id)::int AS count,
@@ -122,13 +137,14 @@ export async function listCategoriesWithCounts(): Promise<CategoryWithCount[]> {
     INNER JOIN "character" ch ON c."characterId" = ch.id
     LEFT JOIN "sticker" s ON s."categoryId" = c.id AND s.status = 'approved'
     LEFT JOIN "user" u ON c."createdById" = u.id
-    GROUP BY c.id, c.name, c.slug, c."characterId", ch.name, c."createdAt", u.name, u."githubLogin"
-    ORDER BY c."characterId" ASC, c.slug ASC
+    GROUP BY c.id, c.name, c.slug, c."sortOrder", c."characterId", ch.name, ch."sortOrder", c."createdAt", u.name, u."githubLogin"
+    ORDER BY ch."sortOrder" ASC, c."characterId" ASC, c."sortOrder" ASC, c.slug ASC
   `);
   return result.rows.map((r) => ({
     id: r.id,
     name: r.name,
     slug: r.slug,
+    sortOrder: Number(r.sortOrder),
     characterId: r.characterId,
     characterName: r.characterName,
     count: Number(r.count),

@@ -12,6 +12,7 @@ import { SIMILAR_STICKERS_CACHE_TAG, assertActiveVisualHashesComplete } from "@/
 import { keyFromUrl, remove } from "@/lib/r2";
 import { uploadStickerFile } from "@/lib/upload";
 import { uploadCharacterBackground } from "@/lib/character-background";
+import { parseRequiredInteger } from "@/lib/form-values";
 import type { CharacterVisibility } from "@/lib/types";
 
 export async function bulkUpdateStickers(formData: FormData): Promise<void> {
@@ -157,6 +158,7 @@ export async function addCategory(formData: FormData): Promise<void> {
     id,
     name: readText(formData, "categoryName"),
     slug,
+    sortOrder: readInteger(formData, "categorySortOrder"),
     characterId,
     createdById: session.user.id,
   });
@@ -172,7 +174,12 @@ export async function updateCategory(formData: FormData): Promise<void> {
   await ensureCategorySlugAvailable(characterId, slug, id);
   await db
     .update(categories)
-    .set({ name: readText(formData, "categoryName"), slug, characterId })
+    .set({
+      name: readText(formData, "categoryName"),
+      slug,
+      sortOrder: readInteger(formData, "categorySortOrder"),
+      characterId,
+    })
     .where(eq(categories.id, id));
   revalidateAdminPages();
 }
@@ -185,6 +192,7 @@ export async function addCharacter(formData: FormData): Promise<void> {
   await db.insert(characters).values({
     id,
     name: readText(formData, "characterName"),
+    sortOrder: readInteger(formData, "characterSortOrder"),
     visibility: readCharacterVisibility(formData),
     backgroundImageUrl: readOptionalText(formData, "characterBackgroundImageUrl"),
     createdById: session.user.id,
@@ -199,6 +207,7 @@ export async function updateCharacter(formData: FormData): Promise<void> {
     .update(characters)
     .set({
       name: readText(formData, "characterName"),
+      sortOrder: readInteger(formData, "characterSortOrder"),
       visibility: readCharacterVisibility(formData),
       backgroundImageUrl: readOptionalText(formData, "characterBackgroundImageUrl"),
     })
@@ -247,6 +256,10 @@ function readText(formData: FormData, key: string): string {
     throw new Error(`缺少字段：${key}`);
   }
   return value.trim();
+}
+
+function readInteger(formData: FormData, key: string): number {
+  return parseRequiredInteger(readText(formData, key), key);
 }
 
 function readStickerStatus(formData: FormData): "approved" | "pending" | "rejected" {

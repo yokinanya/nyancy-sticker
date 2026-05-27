@@ -16,6 +16,7 @@ export interface Sticker {
 export interface Character {
   id: string;
   name: string;
+  sortOrder: number;
   visibility: CharacterVisibility;
   backgroundImageUrl: string | null;
 }
@@ -24,6 +25,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  sortOrder: number;
   characterId: string;
 }
 

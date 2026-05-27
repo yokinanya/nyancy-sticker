@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
 import { SIMILAR_STICKERS_CACHE_TAG } from "@/lib/queries/similar-stickers";
+import { nextSortOrder } from "@/lib/sort-order";
 import { uploadStickerFile } from "@/lib/upload";
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024;
@@ -76,7 +77,7 @@ function readText(formData: FormData, key: string): string {
  */
 export async function createSubcategoryForSubmit(
   formData: FormData,
-): Promise<{ id: string; name: string; slug: string; characterId: string }> {
+): Promise<{ id: string; name: string; slug: string; sortOrder: number; characterId: string }> {
   const session = await requireUser();
   const characterId = readText(formData, "characterId");
   const rawId = readText(formData, "categoryId");
@@ -97,11 +98,17 @@ export async function createSubcategoryForSubmit(
   });
   if (existing) throw new Error(`该角色下分类短名已存在：${rawId}`);
   const id = categoryIdFor(characterId, rawId);
+  const siblingRows = await db
+    .select({ sortOrder: categories.sortOrder })
+    .from(categories)
+    .where(eq(categories.characterId, characterId));
+  const sortOrder = nextSortOrder(siblingRows);
 
   await db.insert(categories).values({
     id,
     name,
     slug: rawId,
+    sortOrder,
     characterId,
     createdById: session.user.id,
   });
@@ -114,7 +121,7 @@ export async function createSubcategoryForSubmit(
     where: eq(categories.id, id),
   });
   if (!created) throw new Error(`分类创建失败：${rawId}`);
-  return { id: created.id, name, slug: rawId, characterId };
+  return { id: created.id, name, slug: rawId, sortOrder, characterId };
 }
 
 function splitTags(value: string): string[] {
