@@ -86,13 +86,14 @@ function BackgroundCropModal({
     <Modal>
       <Modal.Backdrop isOpen onOpenChange={(open) => !open && cancel()}>
         <Modal.Container>
-          <Modal.Dialog className="motion-panel modal-surface w-full max-w-2xl">
+          <Modal.Dialog className="motion-panel modal-surface flex w-fit max-w-[calc(100vw-2rem)] flex-col overflow-hidden">
             <Modal.Header>
               <Modal.Heading>裁剪背景图</Modal.Heading>
             </Modal.Header>
-            <Modal.Body>
+            <Modal.Body className="flex min-h-0 justify-center overflow-hidden">
               <ReactCrop
                 aspect={BACKGROUND_CROP_ASPECT}
+                className="block max-h-[calc(100dvh-12rem)] max-w-full overflow-hidden rounded-lg"
                 crop={crop}
                 keepSelection
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -103,12 +104,12 @@ function BackgroundCropModal({
                   ref={imageRef}
                   src={draft.url}
                   alt=""
-                  className="max-h-[58vh] w-full select-none rounded-lg object-contain"
+                  className="max-h-[calc(100dvh-12rem)] max-w-full select-none object-contain"
                   onLoad={(event) => setCrop(centerAspectPercentCrop(event))}
                 />
               </ReactCrop>
             </Modal.Body>
-            <Modal.Footer>
+            <Modal.Footer className="pb-5 sm:pb-6">
               <Button variant="ghost" isDisabled={isUploading} onPress={cancel} className="motion-press">
                 取消
               </Button>
