@@ -8,7 +8,7 @@ import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireAdmin, requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
-import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
+import { SIMILAR_STICKERS_CACHE_TAG, assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
 import { keyFromUrl, remove } from "@/lib/r2";
 import { uploadStickerFile } from "@/lib/upload";
 import { uploadCharacterBackground } from "@/lib/character-background";
@@ -295,6 +295,7 @@ function splitTags(value: string): string[] {
 function revalidateAdminPages() {
   revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
   revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
+  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
   revalidatePath("/admin");
   revalidatePath("/");
 }

@@ -8,6 +8,7 @@ import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
+import { SIMILAR_STICKERS_CACHE_TAG } from "@/lib/queries/similar-stickers";
 import { uploadStickerFile } from "@/lib/upload";
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024;
@@ -57,6 +58,8 @@ export async function createSubmission(formData: FormData): Promise<void> {
     }
     throw err;
   }
+  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
+  revalidatePath("/admin");
 }
 
 function readText(formData: FormData, key: string): string {
@@ -104,6 +107,7 @@ export async function createSubcategoryForSubmit(
   });
   revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
   revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
+  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
   revalidatePath("/");
   revalidatePath("/admin");
   const created = await db.query.categories.findFirst({

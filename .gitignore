@@ -55,5 +55,7 @@ public/worker-*.js.map
 !.vscode/extensions.json
 !.vscode/settings.json
 
-# claude
+# ai
 .claude
+.codex
+.agents

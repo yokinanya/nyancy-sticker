@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { categories, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
+import { SIMILAR_STICKERS_CACHE_TAG } from "@/lib/queries/similar-stickers";
 import { keyFromUrl, remove } from "@/lib/r2";
 
 export async function approveSubmission(formData: FormData): Promise<void> {
@@ -36,6 +37,7 @@ export async function approveSubmission(formData: FormData): Promise<void> {
   if (result.length === 0) throw new Error("投稿不存在或已被处理。");
 
   revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
+  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
   revalidatePath("/");
   revalidatePath("/admin");
 }
@@ -59,6 +61,7 @@ export async function rejectSubmission(formData: FormData): Promise<void> {
     .set({ status: "rejected", rejectionReason: reason })
     .where(eq(stickers.id, id));
 
+  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
   revalidatePath("/admin");
 }
 

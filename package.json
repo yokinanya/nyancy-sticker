@@ -17,7 +17,8 @@
     "db:seed": "tsx scripts/seed-from-json.ts",
     "db:backfill-previews": "tsx scripts/backfill-previews.ts",
     "db:backfill-visual-hashes": "tsx scripts/backfill-visual-hashes.ts",
-    "db:migrate-ozawayu": "tsx scripts/migrate-ozawayu-category.ts"
+    "db:migrate-ozawayu": "tsx scripts/migrate-ozawayu-category.ts",
+    "rename:stickers": "tsx scripts/rename-sticker-images.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

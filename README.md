@@ -9,6 +9,8 @@
 - 支持标签筛选、预览、复制链接、下载
 - **登录投稿**：GitHub OAuth 登录后通过 `/submit` 投稿，进入审核队列
 - **后台审核 / 管理**：`/admin/submissions` 审核投稿，`/admin` 管理分类、标签、贴纸
+- **批量上传优化**：支持 R2 预签名直传、服务器中转上传、已存在 R2 对象复用
+- **维护脚本**：可用 Vercel AI Gateway 识别本地表情图片并批量生成文件名
 - PWA：manifest、图标、Service Worker
 
 ## 技术栈
@@ -34,6 +36,7 @@ cp .env.example .env.local
 - `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`（GitHub OAuth App，callback URL `<origin>/api/auth/callback/github`）
 - `ADMIN_GITHUB_LOGINS`（逗号分隔，登录时这些用户会被种子化为 admin）
 - `R2_*` 与 `NEXT_PUBLIC_R2_HOST`（Cloudflare R2 凭证与公开域名）
+- `AI_GATEWAY_API_KEY`（可选，仅运行 `pnpm rename:stickers` 时需要）
 
 2. 安装依赖、跑迁移、（首次）灌入历史数据：
 
@@ -63,6 +66,7 @@ pnpm db:push           # 直接同步 schema（dev 快速迭代用）
 pnpm db:studio         # Drizzle Studio
 pnpm db:seed           # 一次性：从 data/stickers.json 灌入历史数据
 pnpm db:backfill-previews # 为 approved/pending 历史贴纸生成 R2 预览图
+pnpm rename:stickers -- <目录> # dry-run：用 Vercel AI Gateway 识别本地表情图并生成改名计划
 ```
 
 ## 数据模型
@@ -81,6 +85,22 @@ R2 key 规则：
 - GIF 预览：`previews/<角色id>/<分类slug>/<hash>-160.gif`
 
 生产上传链路会同时写入原图和预览图；历史数据在首次 seed 后必须运行 `pnpm db:backfill-previews`，否则画廊查询会显式报错提示缺少 `previewSrc`。
+
+上传默认使用 R2 预签名直传：浏览器先向应用请求 `/presign`，再直接 `PUT` 到 R2 临时对象，最后由 `/complete` 读取临时对象、生成预览并写库。上传表单也提供“服务器中转”模式，用于用户网络无法直连 Cloudflare R2 的场景。
+
+如果同一张图片已经在共用 R2 bucket 中存在，上传前会先尝试按 `hash + 分类 + 扩展名` 导入已有最终对象；成功时会直接写当前数据库，不重复上传文件。
+
+R2 直传要求 bucket CORS 允许站点来源执行 `PUT`，并允许 `Content-Type` / `Cache-Control` 请求头。临时对象使用 `Cache-Control: no-store`，最终原图和预览继续使用长期 immutable 缓存。
+
+## 维护脚本
+
+```bash
+pnpm rename:stickers -- /path/to/images
+pnpm rename:stickers -- /path/to/images --recursive
+pnpm rename:stickers -- /path/to/images --apply
+```
+
+`rename:stickers` 默认只输出 dry-run 计划；加 `--apply` 才会重命名。脚本会把图片缩小后通过 Vercel AI Gateway 多模态模型识别，并生成中文短文件名。默认模型由 `VERCEL_IMAGE_RENAME_MODEL` 控制。
 
 ## 部署
 

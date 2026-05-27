@@ -17,6 +17,8 @@ import { CreateSubcategoryModal } from "@/app/submit/create-subcategory-modal";
 
 const UPLOAD_CONCURRENCY = 3;
 
+type UploadMode = "direct" | "server";
+
 type ItemStatus =
   | "processing"
   | "ready"
@@ -44,7 +46,7 @@ interface Item {
 interface Props {
   categories: readonly Category[];
   characters: readonly Character[];
-  /** 单张上传 endpoint，POST multipart formData。默认 /api/submit。 */
+  /** 上传 endpoint 基址，会调用 /presign 和 /complete。默认 /api/submit。 */
   endpoint?: string;
   /** 按钮文案，比如「开始上传」、「批量发布」。 */
   submitLabel?: string;
@@ -56,7 +58,7 @@ interface UploadOneOptions {
   item: Item;
   endpoint: string;
   category: string;
-  defaultTags: string;
+  mode: UploadMode;
   onProgress: (p: number) => void;
 }
 
@@ -64,10 +66,23 @@ interface UploadQueueOptions {
   items: readonly Item[];
   endpoint: string;
   category: string;
-  defaultTags: string;
   concurrency: number;
+  mode: UploadMode;
   onItemPatch: (clientId: string, patch: Partial<Item>) => void;
 }
+
+interface PresignSuccess {
+  ok: true;
+  key: string;
+  uploadUrl: string;
+  headers: Record<string, string>;
+}
+
+type UploadResult = { ok: true } | { ok: false; error: string };
+type ImportExistingResult =
+  | { ok: true; imported: true; id: string }
+  | { ok: true; imported: false }
+  | { ok: false; error: string };
 
 export function BatchUploadForm({
   categories: serverCategories,
@@ -93,11 +108,11 @@ export function BatchUploadForm({
   );
   const currentCharacterName = characters.find((c) => c.id === character)?.name ?? "";
 
-  const [defaultTags, setDefaultTags] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadMode, setUploadMode] = useState<UploadMode>("direct");
   const [uploadBatchIds, setUploadBatchIds] = useState<readonly string[]>([]);
 
   const totalProgress = useMemo(() => {
@@ -223,8 +238,8 @@ export function BatchUploadForm({
       items: list,
       endpoint,
       category: subCategory,
-      defaultTags,
       concurrency: UPLOAD_CONCURRENCY,
+      mode: uploadMode,
       onItemPatch: updateItem,
     });
     setUploading(false);
@@ -279,12 +294,15 @@ export function BatchUploadForm({
             + 新建
           </Button>
         </div>
-        <Field label="默认标签（每张可单独追加）">
-          <Input
-            value={defaultTags}
-            onChange={(e) => setDefaultTags(e.target.value)}
-            placeholder="逗号分隔，可空"
-            className="field-control"
+        <Field label="上传方式">
+          <PlainSelect
+            ariaLabel="上传方式"
+            value={uploadMode}
+            onChange={(value) => setUploadMode(value as UploadMode)}
+            options={[
+              { value: "direct", label: "R2 直传" },
+              { value: "server", label: "服务器中转" },
+            ]}
           />
         </Field>
       </section>
@@ -629,7 +647,7 @@ async function uploadQueueItem(options: UploadQueueOptions, item: Item): Promise
       item,
       endpoint: options.endpoint,
       category: options.category,
-      defaultTags: options.defaultTags,
+      mode: options.mode,
       onProgress: (progress) => options.onItemPatch(item.clientId, { progress }),
     });
     options.onItemPatch(item.clientId, { status: "done", progress: 100 });
@@ -641,41 +659,121 @@ async function uploadQueueItem(options: UploadQueueOptions, item: Item): Promise
   }
 }
 
-function uploadOne({
+async function uploadOne({
   item,
   endpoint,
   category,
-  defaultTags,
+  mode,
   onProgress,
 }: UploadOneOptions): Promise<void> {
+  const options = { item, endpoint, category, mode, onProgress };
+  if (await importExistingUpload(options)) return;
+  if (mode === "server") return serverRelayUpload(options);
+  return presignUpload(options);
+}
+
+async function presignUpload(options: UploadOneOptions): Promise<void> {
+  const presigned = await requestPresignedUpload(options);
+  await putFileToR2(options.item.file, presigned, options.onProgress);
+  await completeUpload(options, presigned.key);
+}
+
+async function importExistingUpload(options: UploadOneOptions): Promise<boolean> {
+  if (!options.item.hash) return false;
+  const response = await fetch(`${options.endpoint}/import-existing`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      category: options.category,
+      fileName: options.item.file.name,
+      hash: options.item.hash,
+      name: options.item.name.trim() || baseName(options.item.file.name),
+      tags: options.item.tags,
+    }),
+  });
+  const result = (await response.json()) as ImportExistingResult;
+  if (!response.ok || !result.ok) {
+    throw new Error(("error" in result && result.error) || `HTTP ${response.status}`);
+  }
+  return result.imported;
+}
+
+async function requestPresignedUpload(options: UploadOneOptions): Promise<PresignSuccess> {
+  const response = await fetch(`${options.endpoint}/presign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      category: options.category,
+      contentType: options.item.file.type,
+      fileName: options.item.file.name,
+      size: options.item.file.size,
+    }),
+  });
+  const result = (await response.json()) as PresignSuccess | { ok: false; error: string };
+  if (response.ok && result.ok) return result;
+  throw new Error(("error" in result && result.error) || `HTTP ${response.status}`);
+}
+
+function putFileToR2(
+  file: File,
+  presigned: PresignSuccess,
+  onProgress: (p: number) => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const fd = new FormData();
-    fd.set("file", item.file);
-    fd.set("category", category);
-    fd.set("name", item.name.trim() || baseName(item.file.name));
-    fd.set("tags", mergeTags(defaultTags, item.tags));
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", endpoint);
+    xhr.open("PUT", presigned.uploadUrl);
+    Object.entries(presigned.headers).forEach(([key, value]) => xhr.setRequestHeader(key, value));
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`R2 上传失败：HTTP ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("R2 上传网络错误"));
+    xhr.send(file);
+  });
+}
+
+async function completeUpload(options: UploadOneOptions, key: string): Promise<void> {
+  const response = await fetch(`${options.endpoint}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      category: options.category,
+      fileName: options.item.file.name,
+      key,
+      name: options.item.name.trim() || baseName(options.item.file.name),
+      tags: options.item.tags,
+    }),
+  });
+  const result = (await response.json()) as UploadResult;
+  if (response.ok && result.ok) return;
+  throw new Error(("error" in result && result.error) || `HTTP ${response.status}`);
+}
+
+function serverRelayUpload(options: UploadOneOptions): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.set("file", options.item.file);
+    fd.set("category", options.category);
+    fd.set("name", options.item.name.trim() || baseName(options.item.file.name));
+    fd.set("tags", options.item.tags);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", options.endpoint);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) options.onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => {
       try {
-        const result = JSON.parse(xhr.responseText || "{}") as
-          | { ok: true }
-          | { ok: false; error: string };
+        const result = JSON.parse(xhr.responseText || "{}") as UploadResult;
         if (xhr.status >= 200 && xhr.status < 300 && result.ok) resolve();
         else reject(new Error(("error" in result && result.error) || `HTTP ${xhr.status}`));
       } catch {
         reject(new Error(`HTTP ${xhr.status}`));
       }
     };
-    xhr.onerror = () => reject(new Error("网络错误"));
+    xhr.onerror = () => reject(new Error("服务器中转上传网络错误"));
     xhr.send(fd);
   });
-}
-
-function mergeTags(a: string, b: string): string {
-  const all = [...a.split(","), ...b.split(",")].map((t) => t.trim()).filter(Boolean);
-  return [...new Set(all)].join(", ");
 }

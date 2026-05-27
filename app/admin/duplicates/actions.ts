@@ -7,7 +7,7 @@ import { stickerSimilarityDecisions, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
 import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
 import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
-import { listDuplicateGroups } from "@/lib/queries/similar-stickers";
+import { SIMILAR_STICKERS_CACHE_TAG, listDuplicateGroups } from "@/lib/queries/similar-stickers";
 import { normalizePair } from "@/lib/similarity-groups";
 
 const ACTIVE_STATUSES = ["approved", "pending"] as const;
@@ -113,6 +113,7 @@ function duplicateReason(keepIds: readonly string[]): string {
 function revalidateDuplicatePages() {
   revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
   revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
+  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
   revalidatePath("/");
   revalidatePath("/admin");
 }

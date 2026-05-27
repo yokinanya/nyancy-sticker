@@ -2,8 +2,10 @@ import "server-only";
 
 export {
   copy,
+  download,
   exists,
   keyFromUrl,
+  presignedPutObjectUrl,
   publicUrlFor,
   r2Config,
   remove,

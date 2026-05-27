@@ -150,6 +150,8 @@ R2_PUBLIC_HOST=s3.yokina.moe
 NEXT_PUBLIC_R2_HOST=s3.yokina.moe
 NEXT_SERVER_ACTION_BODY_SIZE_LIMIT=100mb
 R2_PROXY_URL=
+AI_GATEWAY_API_KEY=
+VERCEL_IMAGE_RENAME_MODEL=anthropic/claude-sonnet-4.6
 ```
 
 说明：
@@ -161,6 +163,8 @@ R2_PROXY_URL=
 - `R2_*` 用于上传图片到 Cloudflare R2。
 - `NEXT_PUBLIC_R2_HOST` 用于 Next Image 远程图片白名单。
 - `R2_PROXY_URL` 仅本地访问 R2 需要代理时填写，生产环境留空。
+- `AI_GATEWAY_API_KEY` 仅维护脚本 `pnpm rename:stickers` 需要，来自 Vercel AI Gateway。
+- `VERCEL_IMAGE_RENAME_MODEL` 控制本地图片改名脚本使用的多模态模型。
 
 GitHub OAuth callback URL：
 
@@ -195,7 +199,26 @@ pnpm db:migrate   # 应用 migration 到数据库
 pnpm db:push      # 直接同步 schema，适合本地快速迭代
 pnpm db:studio    # Drizzle Studio
 pnpm db:seed      # 首次从 docs/archive/stickers.json 导入历史数据
+pnpm db:backfill-previews      # 为历史贴纸生成 R2 预览图
+pnpm db:backfill-visual-hashes # 为历史贴纸补齐 visualHashV2
+pnpm rename:stickers -- <目录>  # dry-run：识别本地表情图片并生成改名计划
 ```
+
+`pnpm rename:stickers` 默认不改文件；确认输出后加 `--apply` 才会重命名。支持 `--recursive` 递归扫描目录，支持 `--model <provider/model>` 覆盖模型。
+
+## 上传链路
+
+批量上传表单默认使用 R2 预签名直传：
+
+1. 应用签发 `/presign`，返回临时 R2 `PUT` URL。
+2. 浏览器直接把图片上传到 R2 临时对象。
+3. 应用 `/complete` 从 R2 读取临时对象，计算 hash / visualHash，生成预览，写数据库，并删除临时对象。
+
+如果用户网络无法直连 Cloudflare R2，可以在上传表单手动切换为“服务器中转”。该模式走原始 multipart Route Handler，由应用服务器接收文件后上传到 R2。不会自动静默 fallback。
+
+上传前会先尝试 `/import-existing`：如果同一张图片已经存在于共用 R2 bucket 的最终 key，服务端会下载该对象做可信校验并直接写当前数据库，避免重复上传。
+
+R2 bucket CORS 需要允许站点来源执行 `PUT`，并允许 `Content-Type` / `Cache-Control` 请求头。临时对象使用 `Cache-Control: no-store`，最终图片和预览继续使用长期 immutable 缓存。
 
 ## 目录说明
 
@@ -219,12 +242,16 @@ public/                 静态资源和 PWA 图标
 - [lib/auth-helpers.ts](../lib/auth-helpers.ts)：用户、管理员、超级管理员权限检查
 - [lib/upload.ts](../lib/upload.ts)：图片检查、hash、R2 上传
 - [lib/r2.ts](../lib/r2.ts)：Cloudflare R2 客户端和公开 URL
+- [lib/sticker-record.ts](../lib/sticker-record.ts)：上传、导入和中转共用的贴纸写库逻辑
 - [lib/keys.ts](../lib/keys.ts)：R2 object key 生成
 - [lib/queries/stickers.ts](../lib/queries/stickers.ts)：前台图库查询
 - [lib/queries/admin-stickers.ts](../lib/queries/admin-stickers.ts)：后台贴纸查询
 - [components/batch-upload-form.tsx](../components/batch-upload-form.tsx)：投稿和后台批量上传表单
 - [app/api/submit/route.ts](../app/api/submit/route.ts)：投稿上传入口
 - [app/api/admin/upload-one/route.ts](../app/api/admin/upload-one/route.ts)：后台直接发布上传入口
+- [app/api/submit/presign/route.ts](../app/api/submit/presign/route.ts)：投稿 R2 直传签名入口
+- [app/api/submit/complete/route.ts](../app/api/submit/complete/route.ts)：投稿 R2 直传完成入口
+- [app/api/submit/import-existing/route.ts](../app/api/submit/import-existing/route.ts)：投稿复用已有 R2 对象入口
 - [app/admin/submissions/actions.ts](../app/admin/submissions/actions.ts)：审核通过和拒绝
 
 ## 图标与站点信息

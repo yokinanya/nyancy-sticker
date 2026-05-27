@@ -1,11 +1,13 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickerSimilarityDecisions, stickers, users } from "@/drizzle/schema";
 import {
   buildDuplicateGroups,
   findSimilarRows,
+  findSimilarRowsForSources,
   similarityPairKey,
   type DuplicateGroup,
   type SimilarityRow,
@@ -15,6 +17,7 @@ import {
 import { assertVisualHashV2 } from "@/lib/visual-hash";
 
 const ACTIVE_STATUSES = ["approved", "pending"] as const;
+export const SIMILAR_STICKERS_CACHE_TAG = "similar-stickers";
 
 export async function assertActiveVisualHashesComplete(): Promise<void> {
   const missing = await db
@@ -42,15 +45,21 @@ export async function findSimilarStickersForSources(
     loadActiveSimilarityRows(),
     loadIgnoredPairKeys(),
   ]);
-  return new Map(
-    sources.map((source) => {
-      const checked = checkedSource(source);
-      return [checked.id, findSimilarRows(checked, rows, { ignoredPairs })];
-    }),
-  );
+  const checkedSources = sources.map(checkedSource);
+  return findSimilarRowsForSources(checkedSources, rows, { ignoredPairs });
 }
 
 export async function listDuplicateGroups(): Promise<DuplicateGroup[]> {
+  return listCachedDuplicateGroups();
+}
+
+const listCachedDuplicateGroups = unstable_cache(
+  buildDuplicateGroupsFromDb,
+  ["duplicate-groups"],
+  { tags: [SIMILAR_STICKERS_CACHE_TAG] },
+);
+
+async function buildDuplicateGroupsFromDb(): Promise<DuplicateGroup[]> {
   const [rows, ignoredPairs] = await Promise.all([
     loadActiveSimilarityRows(),
     loadIgnoredPairKeys(),

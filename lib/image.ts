@@ -24,9 +24,13 @@ export interface InspectedImage {
 }
 
 export async function inspectImage(file: File): Promise<InspectedImage> {
-  const ext = extOf(file.name);
-  if (!ext) throw new Error(`不支持的图片格式：${file.name}`);
   const buffer = Buffer.from(await file.arrayBuffer());
+  return inspectImageBuffer(buffer, file.name);
+}
+
+export async function inspectImageBuffer(buffer: Buffer, fileName: string): Promise<InspectedImage> {
+  const ext = extOf(fileName);
+  if (!ext) throw new Error(`不支持的图片格式：${fileName}`);
   const [meta, visualHash, visualHashV2] = await Promise.all([
     sharp(buffer, { animated: ext === "gif" }).metadata(),
     generateVisualHash(buffer),
@@ -34,7 +38,7 @@ export async function inspectImage(file: File): Promise<InspectedImage> {
   ]);
   const width = meta.width ?? 0;
   const height = meta.pageHeight ?? meta.height ?? 0;
-  if (!width || !height) throw new Error(`无法读取图片尺寸：${file.name}`);
+  if (!width || !height) throw new Error(`无法读取图片尺寸：${fileName}`);
   const hash = createHash("sha256").update(buffer).digest("hex").slice(0, 16);
   return { width, height, ext, hash, visualHash, visualHashV2, buffer };
 }

@@ -3,34 +3,21 @@ import { requireEditor } from "@/lib/auth-helpers";
 import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
 import { revalidateStickerViews } from "@/lib/revalidate-stickers";
 import { insertApprovedSticker, isDuplicateStickerError } from "@/lib/sticker-record";
-import { uploadStickerFile } from "@/lib/upload";
+import { uploadStickerObject } from "@/lib/upload";
 
 export const runtime = "nodejs";
-
-const MAX_SIZE_BYTES = 8 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
 export async function POST(request: Request) {
   try {
     const session = await requireEditor();
-    const formData = await request.formData();
-
-    const category = readText(formData, "category");
-    const name = readText(formData, "name");
-    const tagsValue = formData.get("tags");
-    const tags = typeof tagsValue === "string" ? tagsValue : "";
-
-    const file = formData.get("file");
-    if (!(file instanceof File)) throw new Error("缺少图片文件。");
-    if (!ALLOWED_TYPES.has(file.type)) throw new Error("仅支持 PNG / JPG / GIF / WebP。");
-    if (file.size === 0) throw new Error("文件内容为空。");
-    if (file.size > MAX_SIZE_BYTES) throw new Error("文件过大（>8MB）。");
+    const input = await readCompleteInput(request);
+    assertOwnedTempKey(input.key, session.user.id);
 
     await assertActiveVisualHashesComplete();
-    const uploaded = await uploadStickerFile(file, category);
+    const uploaded = await uploadStickerObject(input.key, input.fileName, input.category);
 
     try {
-      await insertApprovedSticker({ category, name, tags, uploaded, userId: session.user.id });
+      await insertApprovedSticker({ ...input, uploaded, userId: session.user.id });
     } catch (err) {
       if (isDuplicateStickerError(err)) {
         return NextResponse.json(
@@ -49,8 +36,23 @@ export async function POST(request: Request) {
   }
 }
 
-function readText(formData: FormData, key: string): string {
-  const value = formData.get(key);
+async function readCompleteInput(request: Request) {
+  const body = (await request.json()) as Partial<Record<string, unknown>>;
+  return {
+    category: readText(body.category, "category"),
+    fileName: readText(body.fileName, "fileName"),
+    key: readText(body.key, "key"),
+    name: readText(body.name, "name"),
+    tags: typeof body.tags === "string" ? body.tags : "",
+  };
+}
+
+function assertOwnedTempKey(key: string, userId: string): void {
+  const prefix = `tmp/uploads/${encodeURIComponent(userId)}/`;
+  if (!key.startsWith(prefix)) throw new Error("上传对象不属于当前用户。");
+}
+
+function readText(value: unknown, key: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`缺少字段：${key}`);
   }

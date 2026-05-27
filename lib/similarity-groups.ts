@@ -1,9 +1,25 @@
 import {
+  VISUAL_HASH_HEX_LENGTH,
   VISUAL_SIMILAR_SCORE_V2,
+  assertVisualHashV2,
   isSimilarFingerprint,
   visualFingerprintDistance,
   type VisualFingerprintDistance,
 } from "./visual-hash";
+
+const AVERAGE_HASH_START = 0;
+const DIFFERENCE_HASH_START = 16;
+const PERCEPTUAL_HASH_START = 32;
+const MAX_PERCEPTUAL_MATCH_DISTANCE = Math.floor(VISUAL_SIMILAR_SCORE_V2 / 0.55);
+const MAX_SCORE_MATCH_DIFFERENCE_DISTANCE = Math.floor(VISUAL_SIMILAR_SCORE_V2 / 0.3);
+const PERCEPTUAL_DISTANCE_LIMIT = 10;
+const STRONG_PERCEPTUAL_DISTANCE_LIMIT = 2;
+const DIFFERENCE_DISTANCE_LIMIT = 12;
+const STRONG_AVERAGE_DISTANCE_LIMIT = 4;
+const PERCEPTUAL_WEIGHT = 0.55;
+const DIFFERENCE_WEIGHT = 0.3;
+const AVERAGE_WEIGHT = 0.15;
+const NIBBLE_BITS = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4] as const;
 
 export type ActiveStickerStatus = "approved" | "pending";
 
@@ -54,10 +70,35 @@ export function findSimilarRows(
   rows: readonly SimilarityRow[],
   options: SimilarityOptions = {},
 ): SimilarSticker[] {
+  assertVisualHashV2(source.visualHashV2);
+  return findSimilarRowsInGroup(source, rows, options);
+}
+
+export function findSimilarRowsForSources(
+  sources: readonly SimilaritySource[],
+  rows: readonly SimilarityRow[],
+  options: SimilarityOptions = {},
+): Map<string, SimilarSticker[]> {
+  const groupedRows = rowsByCharacter(rows);
+  return new Map(
+    sources.map((source) => [
+      source.id,
+      findSimilarRowsInGroup(source, groupedRows.get(source.characterId) ?? [], options),
+    ]),
+  );
+}
+
+function findSimilarRowsInGroup(
+  source: SimilaritySource,
+  rows: readonly SimilarityRow[],
+  options: SimilarityOptions,
+): SimilarSticker[] {
+  assertVisualHashV2(source.visualHashV2);
   const matches = rows.flatMap((row) => {
     if (row.id === source.id) return [];
     if (row.characterId !== source.characterId) return [];
     if (isIgnoredPair(source.id, row.id, options.ignoredPairs)) return [];
+    if (!mightBeSimilarFingerprint(source.visualHashV2, row.visualHashV2)) return [];
     const distance = visualFingerprintDistance(source.visualHashV2, row.visualHashV2);
     return isSimilarFingerprint(distance) ? [toSimilarSticker(row, distance)] : [];
   });
@@ -92,6 +133,7 @@ function compareCharacterRows(
   nearest: Map<string, number>,
   ignoredPairs: ReadonlySet<string> | undefined,
 ) {
+  rows.forEach((row) => assertVisualHashV2(row.visualHashV2, `贴纸 ${row.id} visualHashV2`));
   for (let left = 0; left < rows.length; left += 1) {
     compareRowPairs(rows, left, sets, nearest, ignoredPairs);
   }
@@ -106,6 +148,7 @@ function compareRowPairs(
 ) {
   for (let right = left + 1; right < rows.length; right += 1) {
     if (isIgnoredPair(rows[left].id, rows[right].id, ignoredPairs)) continue;
+    if (!mightBeSimilarFingerprint(rows[left].visualHashV2, rows[right].visualHashV2)) continue;
     const distance = visualFingerprintDistance(rows[left].visualHashV2, rows[right].visualHashV2);
     if (!isSimilarFingerprint(distance)) continue;
     sets.union(rows[left].id, rows[right].id);
@@ -117,7 +160,9 @@ function compareRowPairs(
 function rowsByCharacter(rows: readonly SimilarityRow[]): Map<string, SimilarityRow[]> {
   const grouped = new Map<string, SimilarityRow[]>();
   for (const row of rows) {
-    grouped.set(row.characterId, [...(grouped.get(row.characterId) ?? []), row]);
+    const group = grouped.get(row.characterId);
+    if (group) group.push(row);
+    else grouped.set(row.characterId, [row]);
   }
   return grouped;
 }
@@ -130,6 +175,29 @@ function isIgnoredPair(
   return ignoredPairs?.has(similarityPairKey(leftId, rightId)) ?? false;
 }
 
+function mightBeSimilarFingerprint(left: string, right: string): boolean {
+  const perceptual = componentDistance(left, right, PERCEPTUAL_HASH_START);
+  if (perceptual > MAX_PERCEPTUAL_MATCH_DISTANCE) return false;
+  const difference = componentDistance(left, right, DIFFERENCE_HASH_START);
+  if (perceptual > STRONG_PERCEPTUAL_DISTANCE_LIMIT && difference > MAX_SCORE_MATCH_DIFFERENCE_DISTANCE) {
+    return false;
+  }
+  const average = componentDistance(left, right, AVERAGE_HASH_START);
+  if (perceptual <= PERCEPTUAL_DISTANCE_LIMIT && difference <= DIFFERENCE_DISTANCE_LIMIT) return true;
+  if (perceptual <= STRONG_PERCEPTUAL_DISTANCE_LIMIT && average <= STRONG_AVERAGE_DISTANCE_LIMIT) return true;
+  const score = perceptual * PERCEPTUAL_WEIGHT + difference * DIFFERENCE_WEIGHT + average * AVERAGE_WEIGHT;
+  return score <= VISUAL_SIMILAR_SCORE_V2;
+}
+
+function componentDistance(left: string, right: string, start: number): number {
+  let distance = 0;
+  for (let i = start; i < start + VISUAL_HASH_HEX_LENGTH; i += 1) {
+    const diff = Number.parseInt(left[i], 16) ^ Number.parseInt(right[i], 16);
+    distance += NIBBLE_BITS[diff];
+  }
+  return distance;
+}
+
 function collectDuplicateGroups(
   rows: readonly SimilarityRow[],
   sets: DisjointSets,
@@ -138,7 +206,9 @@ function collectDuplicateGroups(
   const grouped = new Map<string, SimilarityRow[]>();
   for (const row of rows) {
     const root = sets.find(row.id);
-    grouped.set(root, [...(grouped.get(root) ?? []), row]);
+    const group = grouped.get(root);
+    if (group) group.push(row);
+    else grouped.set(root, [row]);
   }
   return [...grouped.values()]
     .filter((group) => group.length > 1)
