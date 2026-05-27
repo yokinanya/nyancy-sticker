@@ -15,6 +15,8 @@ import {
 } from "@/lib/image-shared";
 import { CreateSubcategoryModal } from "@/app/submit/create-subcategory-modal";
 
+const UPLOAD_CONCURRENCY = 3;
+
 type ItemStatus =
   | "processing"
   | "ready"
@@ -50,6 +52,23 @@ interface Props {
   allowCreateSubcategory?: boolean;
 }
 
+interface UploadOneOptions {
+  item: Item;
+  endpoint: string;
+  category: string;
+  defaultTags: string;
+  onProgress: (p: number) => void;
+}
+
+interface UploadQueueOptions {
+  items: readonly Item[];
+  endpoint: string;
+  category: string;
+  defaultTags: string;
+  concurrency: number;
+  onItemPatch: (clientId: string, patch: Partial<Item>) => void;
+}
+
 export function BatchUploadForm({
   categories: serverCategories,
   characters,
@@ -79,12 +98,14 @@ export function BatchUploadForm({
   const [createOpen, setCreateOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadBatchIds, setUploadBatchIds] = useState<readonly string[]>([]);
 
   const totalProgress = useMemo(() => {
-    if (items.length === 0) return 0;
-    const done = items.filter((i) => i.status === "done").length;
-    return Math.round((done / items.length) * 100);
-  }, [items]);
+    if (!uploading || uploadBatchIds.length === 0) return 0;
+    const ids = new Set(uploadBatchIds);
+    const done = items.filter((i) => ids.has(i.clientId) && i.status === "done").length;
+    return Math.round((done / uploadBatchIds.length) * 100);
+  }, [items, uploadBatchIds, uploading]);
 
   const ready = items.filter((i) => i.status === "ready").length;
   const done = items.filter((i) => i.status === "done").length;
@@ -196,22 +217,18 @@ export function BatchUploadForm({
       return;
     }
     setUploading(true);
+    setUploadBatchIds(list.map((item) => item.clientId));
     const loadingId = feedback.loading(`正在上传 ${list.length} 张图片`);
-    for (const item of list) {
-      updateItem(item.clientId, { status: "uploading", progress: 0, errorMsg: undefined });
-      try {
-        await uploadOne(item, endpoint, subCategory, defaultTags, (p) =>
-          updateItem(item.clientId, { progress: p }),
-        );
-        updateItem(item.clientId, { status: "done", progress: 100 });
-      } catch (e) {
-        updateItem(item.clientId, {
-          status: "error",
-          errorMsg: e instanceof Error ? e.message : "上传失败",
-        });
-      }
-    }
+    await uploadQueue({
+      items: list,
+      endpoint,
+      category: subCategory,
+      defaultTags,
+      concurrency: UPLOAD_CONCURRENCY,
+      onItemPatch: updateItem,
+    });
     setUploading(false);
+    setUploadBatchIds([]);
     feedback.dismiss(loadingId);
     feedback.success("处理完成，可关闭页面或继续上传。");
     router.refresh();
@@ -592,13 +609,45 @@ function decodeDimensions(url: string): Promise<{ width: number; height: number 
   });
 }
 
-function uploadOne(
-  item: Item,
-  endpoint: string,
-  category: string,
-  defaultTags: string,
-  onProgress: (p: number) => void,
-): Promise<void> {
+async function uploadQueue(options: UploadQueueOptions): Promise<void> {
+  let nextIndex = 0;
+  const workerCount = Math.min(options.concurrency, options.items.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextIndex < options.items.length) {
+      const item = options.items[nextIndex];
+      nextIndex += 1;
+      await uploadQueueItem(options, item);
+    }
+  });
+  await Promise.all(workers);
+}
+
+async function uploadQueueItem(options: UploadQueueOptions, item: Item): Promise<void> {
+  options.onItemPatch(item.clientId, { status: "uploading", progress: 0, errorMsg: undefined });
+  try {
+    await uploadOne({
+      item,
+      endpoint: options.endpoint,
+      category: options.category,
+      defaultTags: options.defaultTags,
+      onProgress: (progress) => options.onItemPatch(item.clientId, { progress }),
+    });
+    options.onItemPatch(item.clientId, { status: "done", progress: 100 });
+  } catch (e) {
+    options.onItemPatch(item.clientId, {
+      status: "error",
+      errorMsg: e instanceof Error ? e.message : "上传失败",
+    });
+  }
+}
+
+function uploadOne({
+  item,
+  endpoint,
+  category,
+  defaultTags,
+  onProgress,
+}: UploadOneOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
     fd.set("file", item.file);

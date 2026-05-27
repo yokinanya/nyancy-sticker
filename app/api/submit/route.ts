@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories, stickers } from "@/drizzle/schema";
+import { stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
 import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
 import { revalidateStickerViews } from "@/lib/revalidate-stickers";
@@ -27,9 +26,6 @@ export async function POST(request: Request) {
     if (!ALLOWED_TYPES.has(file.type)) throw new Error("仅支持 PNG / JPG / GIF / WebP。");
     if (file.size === 0) throw new Error("文件内容为空。");
     if (file.size > MAX_SIZE_BYTES) throw new Error("文件过大（>8MB）。");
-
-    const found = await db.query.categories.findFirst({ where: eq(categories.id, category) });
-    if (!found) throw new Error(`分类不存在：${category}`);
 
     await assertActiveVisualHashesComplete();
     const uploaded = await uploadStickerFile(file, category);
