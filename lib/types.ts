@@ -11,6 +11,7 @@ export interface Sticker {
   category: string;
   tags: string[];
   ext: StickerExt;
+  submittedAt: string;
 }
 
 export interface Character {

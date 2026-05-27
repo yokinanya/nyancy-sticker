@@ -32,7 +32,7 @@ export default async function CharacterGalleryPage({ params }: PageProps) {
         characterId={character.id}
         characterName={character.name}
         manifest={{ categories, stickers }}
-        hideTopLevel
+        showAllCategoryTab
       />
     </div>
   );

@@ -12,12 +12,14 @@ import { SearchBar } from "./search-bar";
 import { CategoryTabs } from "./category-tabs";
 import { TagFilter } from "./tag-filter";
 import { StickerGrid } from "./sticker-grid";
+import { ListBox, Select } from "@/components/ui/heroui-compat";
 import { useFilterStore } from "@/lib/store";
+import { orderGalleryStickers, type GallerySortMode } from "@/lib/sticker-order";
 import {
   countTagsByCategoryTree,
   countStickersByCategoryTree,
   createCategoryDescendantMap,
-  defaultCategoryId,
+  defaultGalleryCategoryId,
   type CategoryTagCount,
 } from "@/lib/categories";
 import type { Category, Manifest, Sticker } from "@/lib/types";
@@ -31,29 +33,30 @@ interface Props {
   manifest: Manifest;
   characterId?: string;
   characterName?: string;
-  hideTopLevel?: boolean;
+  showAllCategoryTab?: boolean;
 }
 
 export function StickerGallery({
   manifest,
   characterId = "all",
   characterName = "stickers",
-  hideTopLevel = false,
+  showAllCategoryTab = false,
 }: Props) {
   const { categories, stickers } = manifest;
-  const filters = useScopedFilters(characterId, categories);
+  const filters = useScopedFilters(characterId, categories, showAllCategoryTab);
   const fuse = useFuseIndex(stickers, filters.deferredQuery);
   const derived = useMemo(
     () => createGalleryDerivedData(categories, stickers),
     [categories, stickers],
   );
-  const filtered = useFilteredStickers(stickers, fuse, filters, derived.descendantMap);
   const topTags = useMemo(
     () => getTopTags(derived.tagsByCategory, filters.category),
     [derived.tagsByCategory, filters.category],
   );
   const [active, setActive] = useState<Sticker | null>(null);
   const [open, setOpen] = useState(false);
+  const [sortMode, setSortMode] = useState<GallerySortMode>("default");
+  const filtered = useFilteredStickers(stickers, fuse, filters, derived.descendantMap, sortMode);
   const selection = useStickerSelection(filtered, characterName);
   const { isSelectionMode, toggle } = selection;
   const onOpen = useCallback((s: Sticker) => {
@@ -74,8 +77,10 @@ export function StickerGallery({
         categories={categories}
         counts={derived.categoryCounts}
         filters={filters}
-        hideTopLevel={hideTopLevel}
+        showAllCategoryTab={showAllCategoryTab}
         selection={selection}
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
         topTags={topTags}
       />
       {filtered.length === 0 ? (
@@ -94,7 +99,11 @@ export function StickerGallery({
   );
 }
 
-function useScopedFilters(characterId: string, categories: readonly Category[]) {
+function useScopedFilters(
+  characterId: string,
+  categories: readonly Category[],
+  showAllCategoryTab: boolean,
+) {
   const scopeId = useFilterStore((s) => s.scopeId);
   const storeQuery = useFilterStore((s) => s.query);
   const storeCategory = useFilterStore((s) => s.category);
@@ -104,7 +113,10 @@ function useScopedFilters(characterId: string, categories: readonly Category[]) 
   const setCategory = useFilterStore((s) => s.setCategory);
   const toggleTag = useFilterStore((s) => s.toggleTag);
   const clearTags = useFilterStore((s) => s.clearTags);
-  const defaultCategory = useMemo(() => defaultCategoryId(categories), [categories]);
+  const defaultCategory = useMemo(
+    () => defaultGalleryCategoryId(categories, showAllCategoryTab),
+    [categories, showAllCategoryTab],
+  );
   const currentScope = scopeId === characterId;
   const query = currentScope ? storeQuery : "";
   const category = currentScope ? storeCategory : defaultCategory;
@@ -169,6 +181,7 @@ function useFilteredStickers(
   fuse: FuseIndex | null,
   filters: GalleryFilters,
   descendantMap: ReadonlyMap<string, ReadonlySet<string>>,
+  sortMode: GallerySortMode,
 ) {
   const selectedCategoryIds = useMemo(() => {
     if (!filters.deferredCategory) return null;
@@ -176,21 +189,42 @@ function useFilteredStickers(
   }, [filters.deferredCategory, descendantMap]);
 
   return useMemo(
-    () => filterStickers(stickers, fuse, filters.deferredQuery, selectedCategoryIds, filters.deferredTags),
-    [stickers, fuse, filters.deferredQuery, selectedCategoryIds, filters.deferredTags],
+    () => filterStickers({
+      categoryIds: selectedCategoryIds,
+      fuse,
+      query: filters.deferredQuery,
+      selectedCategory: filters.deferredCategory,
+      sortMode,
+      stickers,
+      tags: filters.deferredTags,
+    }),
+    [
+      stickers,
+      fuse,
+      filters.deferredQuery,
+      filters.deferredCategory,
+      selectedCategoryIds,
+      filters.deferredTags,
+      sortMode,
+    ],
   );
 }
 
-function filterStickers(
-  stickers: readonly Sticker[],
-  fuse: FuseIndex | null,
-  query: string,
-  categoryIds: ReadonlySet<string> | null,
-  tags: readonly string[],
-) {
-  const text = query.trim();
-  const pool = text && fuse ? fuse.search(text).map((result) => result.item) : stickers;
-  return pool.filter((sticker) => matchesFilters(sticker, categoryIds, tags));
+function filterStickers(options: {
+  categoryIds: ReadonlySet<string> | null;
+  fuse: FuseIndex | null;
+  query: string;
+  selectedCategory: string | null;
+  sortMode: GallerySortMode;
+  stickers: readonly Sticker[];
+  tags: readonly string[];
+}) {
+  const text = options.query.trim();
+  const pool = text && options.fuse
+    ? options.fuse.search(text).map((result) => result.item)
+    : options.stickers;
+  const filtered = pool.filter((sticker) => matchesFilters(sticker, options.categoryIds, options.tags));
+  return orderGalleryStickers(filtered, options.selectedCategory, options.sortMode);
 }
 
 function matchesFilters(
@@ -228,32 +262,37 @@ function GalleryControls({
   categories,
   counts,
   filters,
-  hideTopLevel,
+  onSortModeChange,
+  showAllCategoryTab,
   selection,
+  sortMode,
   topTags,
 }: {
   characterId: string;
   categories: Category[];
   counts: Record<string, number>;
   filters: GalleryFilters;
-  hideTopLevel: boolean;
+  onSortModeChange: (sortMode: GallerySortMode) => void;
+  showAllCategoryTab: boolean;
   selection: StickerSelection;
+  sortMode: GallerySortMode;
   topTags: CategoryTagCount[];
 }) {
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_10rem] sm:items-center">
         <SelectionModeToggle selection={selection} />
         <div className="min-w-0 flex-1">
           <SearchBar key={characterId} query={filters.query} onQueryChange={filters.setQuery} />
         </div>
+        <SortModeSelect value={sortMode} onChange={onSortModeChange} />
       </div>
       <CategoryTabs
         categories={categories}
         counts={counts}
         selectedCategory={filters.category}
         onCategoryChange={filters.setCategory}
-        hideTopLevel={hideTopLevel}
+        showAllCategoryTab={showAllCategoryTab}
       />
       <TagFilter
         tags={topTags}
@@ -262,6 +301,44 @@ function GalleryControls({
         onClear={filters.clearTags}
       />
     </>
+  );
+}
+
+function SortModeSelect({
+  onChange,
+  value,
+}: {
+  onChange: (sortMode: GallerySortMode) => void;
+  value: GallerySortMode;
+}) {
+  return (
+    <Select
+      aria-label="排序方式"
+      className="min-w-0"
+      selectedKey={value}
+      onSelectionChange={(key) => onChange(String(key) as GallerySortMode)}
+    >
+      <Select.Trigger className="field-trigger min-h-10 w-full bg-content1 px-3">
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover className="motion-popover popover-surface min-w-40">
+        <ListBox>
+          <ListBox.Item id="default" textValue="默认排序" className="listbox-option">
+            默认排序
+          </ListBox.Item>
+          <ListBox.Item id="newest" textValue="最新上传" className="listbox-option">
+            最新上传
+          </ListBox.Item>
+          <ListBox.Item id="oldest" textValue="最早上传" className="listbox-option">
+            最早上传
+          </ListBox.Item>
+          <ListBox.Item id="name" textValue="按名称" className="listbox-option">
+            按名称
+          </ListBox.Item>
+        </ListBox>
+      </Select.Popover>
+    </Select>
   );
 }
 

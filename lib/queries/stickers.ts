@@ -15,6 +15,7 @@ export async function listApprovedStickers(): Promise<Sticker[]> {
       category: stickers.categoryId,
       tags: stickers.tags,
       ext: stickers.ext,
+      submittedAt: stickers.submittedAt,
     })
     .from(stickers)
     .where(eq(stickers.status, "approved"))
@@ -55,6 +56,7 @@ export async function listApprovedStickersByCharacter(
       category: stickers.categoryId,
       tags: stickers.tags,
       ext: stickers.ext,
+      submittedAt: stickers.submittedAt,
     })
     .from(stickers)
     .where(and(eq(stickers.status, "approved"), inArray(stickers.categoryId, categoryIds)))
@@ -118,7 +120,8 @@ export async function listCharacterGallery(
               'height', s.height,
               'category', s."categoryId",
               'tags', s.tags,
-              'ext', s.ext
+              'ext', s.ext,
+              'submittedAt', s."submittedAt"
             )
             ORDER BY s.id ASC
           )
@@ -139,15 +142,25 @@ export async function listCharacterGallery(
   };
 }
 
-type QueriedSticker = Omit<Sticker, "previewSrc"> & {
+type QueriedSticker = Omit<Sticker, "previewSrc" | "submittedAt"> & {
   previewSrc: string | null;
+  submittedAt: Date | string;
 };
 
 function requirePreviewSrc(sticker: QueriedSticker): Sticker {
   if (!sticker.previewSrc) {
     throw new Error(`贴纸缺少 previewSrc：${sticker.id}，请先运行 pnpm db:backfill-previews。`);
   }
-  return { ...sticker, previewSrc: sticker.previewSrc };
+  return {
+    ...sticker,
+    previewSrc: sticker.previewSrc,
+    submittedAt: normalizeSubmittedAt(sticker.submittedAt),
+  };
+}
+
+function normalizeSubmittedAt(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString();
+  return value;
 }
 
 interface CharacterGalleryRow extends Record<string, unknown> {

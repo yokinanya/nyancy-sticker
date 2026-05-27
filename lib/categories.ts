@@ -79,6 +79,17 @@ export function categoryLabel(category: Category) {
   return `${category.name} (${category.slug})`;
 }
 
+export function allCategoryCount(counts: Readonly<Record<string, number>>) {
+  return Object.values(counts).reduce((total, count) => total + count, 0);
+}
+
 export function defaultCategoryId(categories: readonly Category[]) {
   return categories[0]?.id ?? null;
+}
+
+export function defaultGalleryCategoryId(
+  categories: readonly Category[],
+  showAllCategoryTab: boolean,
+) {
+  return showAllCategoryTab ? null : defaultCategoryId(categories);
 }

@@ -3,16 +3,17 @@
 import { Tabs } from "@/components/ui/heroui-compat";
 import { useMemo } from "react";
 import type { Category } from "@/lib/types";
-import { defaultCategoryId } from "@/lib/categories";
+import { allCategoryCount, defaultGalleryCategoryId } from "@/lib/categories";
 
 interface Props {
   categories: Category[];
   counts: Record<string, number>;
   selectedCategory: string | null;
   onCategoryChange: (category: string | null) => void;
-  hideTopLevel?: boolean;
+  showAllCategoryTab?: boolean;
 }
 
+const ALL_CATEGORY_TAB_ID = "__all__";
 const scrollableTabListClass = "category-tab-list";
 
 export function CategoryTabs({
@@ -20,11 +21,16 @@ export function CategoryTabs({
   counts,
   selectedCategory,
   onCategoryChange,
+  showAllCategoryTab = false,
 }: Props) {
-  const defaultCategory = useMemo(() => defaultCategoryId(categories), [categories]);
+  const defaultCategory = useMemo(
+    () => defaultGalleryCategoryId(categories, showAllCategoryTab),
+    [categories, showAllCategoryTab],
+  );
   const effectiveCategory = isValidCategory(categories, selectedCategory)
     ? selectedCategory
     : defaultCategory;
+  const selectedKey = effectiveCategory ?? (showAllCategoryTab ? ALL_CATEGORY_TAB_ID : undefined);
 
   return (
     <div className="flex flex-col gap-2">
@@ -33,8 +39,11 @@ export function CategoryTabs({
           ariaLabel="分类"
           categories={categories}
           counts={counts}
-          selectedKey={effectiveCategory}
-          onSelectionChange={onCategoryChange}
+          selectedKey={selectedKey}
+          showAllCategoryTab={showAllCategoryTab}
+          onSelectionChange={(id) => {
+            onCategoryChange(id === ALL_CATEGORY_TAB_ID ? null : id);
+          }}
         />
       ) : null}
     </div>
@@ -46,12 +55,14 @@ function CategoryTabGroup({
   categories,
   counts,
   selectedKey,
+  showAllCategoryTab,
   onSelectionChange,
 }: {
   ariaLabel: string;
   categories: readonly Category[];
   counts: Record<string, number>;
-  selectedKey?: string | null;
+  selectedKey?: string;
+  showAllCategoryTab: boolean;
   onSelectionChange: (id: string) => void;
 }) {
   return (
@@ -61,11 +72,25 @@ function CategoryTabGroup({
       onSelectionChange={(key) => onSelectionChange(String(key))}
     >
       <Tabs.List aria-label={ariaLabel} className={scrollableTabListClass}>
+        {showAllCategoryTab ? <AllCategoryTab count={allCategoryCount(counts)} /> : null}
         {categories.map((category) => (
           <CategoryTab key={category.id} category={category} count={counts[category.id] ?? 0} />
         ))}
       </Tabs.List>
     </Tabs>
+  );
+}
+
+function AllCategoryTab({ count }: { count: number }) {
+  return (
+    <Tabs.Tab
+      id={ALL_CATEGORY_TAB_ID}
+      className="category-tab ui-focus"
+      title={`全部 · ${count}`}
+    >
+      <span className="category-tab-label">全部</span>
+      <span className="category-tab-count">{count}</span>
+    </Tabs.Tab>
   );
 }
 
