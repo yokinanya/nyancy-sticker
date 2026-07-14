@@ -7,8 +7,6 @@ import { requireUser } from "@/lib/auth-helpers";
 import { presignedPutObjectUrl } from "@/lib/r2";
 import { extOfName, MAX_SIZE_BYTES, type StickerExt } from "@/lib/image-shared";
 
-export const runtime = "nodejs";
-
 const CACHE_CONTROL = "no-store";
 const PRESIGN_EXPIRES_SECONDS = 300;
 const CONTENT_TYPES: Record<StickerExt, string> = {

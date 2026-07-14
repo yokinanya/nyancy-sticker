@@ -11,8 +11,6 @@ import {
 } from "@/lib/batch-download";
 import { db } from "@/lib/db";
 
-export const runtime = "nodejs";
-
 const ALLOWED_HOST = process.env.R2_PUBLIC_HOST;
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as ArchiverModule;

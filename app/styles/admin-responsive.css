@@ -1,0 +1,70 @@
+.mobile-card-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.collapsible-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 160ms ease,
+    transform 180ms ease,
+    visibility 0s linear 220ms;
+}
+
+.collapsible-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 0s;
+}
+
+.collapsible-panel > .collapsible-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .mobile-card-list {
+    display: none;
+  }
+
+  .collapsible-panel.md-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+.desktop-table-wrap {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-table-wrap {
+    display: block;
+  }
+}
+
+/* 隐藏滚动条占位的同时保留滚动能力 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(var(--foreground) / 0.2);
+  border-radius: 3px;
+}

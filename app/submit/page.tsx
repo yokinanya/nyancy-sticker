@@ -1,14 +1,15 @@
 import { requireUser } from "@/lib/auth-helpers";
-import { listAllCategories } from "@/lib/queries/categories";
+import { listCachedCategories } from "@/lib/queries/categories";
 import { listCachedCharactersWithCounts } from "@/lib/queries/characters";
 import { BatchUploadForm } from "@/components/batch-upload-form";
+import "./submit.css";
 
 export const metadata = { title: "投稿表情包" };
 
 export default async function SubmitPage() {
   await requireUser();
   const [categories, characters] = await Promise.all([
-    listAllCategories(),
+    listCachedCategories(),
     listCachedCharactersWithCounts(),
   ]);
   return (

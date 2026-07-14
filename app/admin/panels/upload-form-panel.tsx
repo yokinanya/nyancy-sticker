@@ -1,10 +1,10 @@
-import { listAllCategories } from "@/lib/queries/categories";
+import { listCachedCategories } from "@/lib/queries/categories";
 import { listCachedAllCharactersWithCounts } from "@/lib/queries/characters";
 import { BatchUploadForm } from "@/components/batch-upload-form";
 
 export async function UploadFormPanel() {
   const [categories, characters] = await Promise.all([
-    listAllCategories(),
+    listCachedCategories(),
     listCachedAllCharactersWithCounts(),
   ]);
   return (

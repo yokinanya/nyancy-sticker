@@ -1,0 +1,17 @@
+.dropzone-feedback {
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.dropzone-feedback:hover,
+.dropzone-feedback:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgb(15 23 42 / 0.08);
+}
+
+.dropzone-feedback:active {
+  transform: translateY(0) scale(0.995);
+}

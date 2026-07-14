@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, characters } from "@/drizzle/schema";
@@ -6,7 +6,7 @@ import type { Category, CharacterVisibility } from "@/lib/types";
 
 export const CATEGORY_TREE_CACHE_TAG = "category-tree";
 
-export async function listAllCategories(): Promise<Category[]> {
+async function listAllCategories(): Promise<Category[]> {
   const rows = await db
     .select({
       id: categories.id,
@@ -32,11 +32,12 @@ export async function listAllCategories(): Promise<Category[]> {
   }));
 }
 
-export const listCachedCategories = unstable_cache(
-  listAllCategories,
-  ["category-tree"],
-  { tags: [CATEGORY_TREE_CACHE_TAG] },
-);
+export async function listCachedCategories(): Promise<Category[]> {
+  "use cache";
+  cacheLife("max");
+  cacheTag(CATEGORY_TREE_CACHE_TAG);
+  return listAllCategories();
+}
 
 export interface CategoryWithCount {
   id: string;

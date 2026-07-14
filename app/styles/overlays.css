@@ -1,0 +1,120 @@
+.modal-surface {
+  margin: 1rem;
+  max-height: calc(100dvh - 2rem);
+  overflow: visible;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-raised-bg);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 0 0 1px var(--glass-border-muted);
+  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(var(--glass-saturate));
+}
+
+.sticker-modal-surface {
+  background:
+    linear-gradient(
+      135deg,
+      rgb(var(--surface-raised) / 0.58),
+      rgb(var(--surface) / 0.34) 48%,
+      rgb(var(--primary) / 0.1)
+    );
+  box-shadow:
+    0 26px 70px rgb(15 23 42 / 0.16),
+    0 8px 26px rgb(var(--primary) / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.42),
+    inset 0 0 0 1px var(--glass-border-muted);
+  backdrop-filter: blur(calc(var(--glass-blur) + 14px)) saturate(180%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 14px)) saturate(180%);
+}
+
+.dark .sticker-modal-surface {
+  background:
+    linear-gradient(
+      135deg,
+      rgb(var(--surface-raised) / 0.5),
+      rgb(var(--surface) / 0.32) 48%,
+      rgb(var(--primary) / 0.08)
+    );
+  box-shadow:
+    0 28px 72px rgb(0 0 0 / 0.42),
+    0 8px 28px rgb(var(--primary) / 0.06),
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 0 0 1px var(--glass-border-muted);
+}
+
+.sticker-edit-footer {
+  border-top: 1px solid rgb(var(--default-200));
+  background: rgb(var(--surface-raised) / 0.46);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.dark .sticker-edit-footer {
+  border-top-color: rgb(var(--default-200));
+  background: rgb(var(--surface-raised) / 0.42);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+.popover-surface {
+  max-height: min(20rem, calc(100dvh - 6rem));
+  overflow: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 0.5rem;
+  background: var(--glass-raised-bg);
+  padding: 0.25rem;
+  box-shadow:
+    var(--glass-shadow-popover),
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 0 0 1px var(--glass-border-muted);
+  backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(var(--glass-saturate));
+}
+
+.dark .popover-surface {
+  background: rgb(var(--surface-raised) / 0.98);
+}
+
+.solid-menu-surface {
+  border: 1px solid rgb(var(--border-subtle));
+  border-radius: 0.5rem;
+  background: rgb(var(--surface-raised));
+  padding: 0.25rem;
+  box-shadow: 0 18px 40px rgb(15 23 42 / 0.16);
+}
+
+.dark .solid-menu-surface {
+  box-shadow: 0 20px 48px rgb(0 0 0 / 0.42);
+}
+
+.listbox-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  text-align: left;
+  font-size: 0.875rem;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.listbox-option:hover,
+.listbox-option:focus-visible,
+.listbox-option[data-focused="true"],
+.listbox-option[data-hovered="true"] {
+  background: rgb(var(--default-100));
+}
+
+.listbox-option[data-selected="true"],
+.listbox-option[aria-selected="true"] {
+  background: rgb(var(--primary) / 0.12);
+  color: rgb(var(--primary));
+}

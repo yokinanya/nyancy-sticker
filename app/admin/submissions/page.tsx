@@ -1,5 +1,11 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { SubmissionsPanel } from "../panels/submissions-panel";
+import { AdminPanelLoading } from "../panel-loading";
 
-export default function SubmissionsRedirect() {
-  redirect("/admin?tab=submissions");
+export default function SubmissionsPage() {
+  return (
+    <Suspense fallback={<AdminPanelLoading tab="submissions" />}>
+      <SubmissionsPanel />
+    </Suspense>
+  );
 }

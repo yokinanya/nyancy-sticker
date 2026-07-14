@@ -1,15 +1,21 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, stickers, users } from "@/drizzle/schema";
-import { listAllCategories } from "@/lib/queries/categories";
+import { listCachedCategories } from "@/lib/queries/categories";
 import { listCachedAllCharactersWithCounts } from "@/lib/queries/characters";
 import { findSimilarStickersForSources } from "@/lib/queries/similar-stickers";
 import { SubmissionList } from "@/app/admin/submissions/submission-list";
+import type {
+  CharacterRef,
+  SimilarCandidate,
+  SubmissionReviewItem,
+} from "@/lib/types";
+import type { SimilarSticker } from "@/lib/similarity-groups";
 
 export async function SubmissionsPanel() {
   const [pending, categories, characters] = await Promise.all([
     listPendingSubmissions(),
-    listAllCategories(),
+    listCachedCategories(),
     listCachedAllCharactersWithCounts(),
   ]);
 
@@ -22,11 +28,17 @@ export async function SubmissionsPanel() {
   }
 
   const similarById = await findSimilarStickersForSources(pending);
-  const submissions = pending.map((submission) => ({
-    ...requirePreviewSrc(submission),
-    similarCandidates: similarById.get(submission.id) ?? [],
-  }));
-  return <SubmissionList submissions={submissions} categories={categories} characters={characters} />;
+  const submissions = pending.map((submission) =>
+    toReviewItem(submission, similarById.get(submission.id) ?? []),
+  );
+  const characterRefs: CharacterRef[] = characters.map(({ id, name }) => ({ id, name }));
+  return (
+    <SubmissionList
+      submissions={submissions}
+      categories={categories}
+      characters={characterRefs}
+    />
+  );
 }
 
 function listPendingSubmissions() {
@@ -35,12 +47,9 @@ function listPendingSubmissions() {
       id: stickers.id,
       characterId: categories.characterId,
       name: stickers.name,
-      src: stickers.src,
       previewSrc: stickers.previewSrc,
       width: stickers.width,
       height: stickers.height,
-      ext: stickers.ext,
-      hash: stickers.hash,
       visualHashV2: stickers.visualHashV2,
       categoryId: stickers.categoryId,
       tags: stickers.tags,
@@ -59,11 +68,34 @@ type PendingSubmission = Awaited<ReturnType<typeof listPendingSubmissions>>[numb
   previewSrc: string | null;
 };
 
-function requirePreviewSrc<T extends PendingSubmission>(
-  submission: T,
-): Omit<T, "previewSrc"> & { previewSrc: string } {
+function toReviewItem(
+  submission: PendingSubmission,
+  similar: readonly SimilarSticker[],
+): SubmissionReviewItem {
   if (!submission.previewSrc) {
     throw new Error(`投稿缺少 previewSrc：${submission.id}，请先运行 pnpm db:backfill-previews。`);
   }
-  return { ...submission, previewSrc: submission.previewSrc };
+  return {
+    id: submission.id,
+    name: submission.name,
+    previewSrc: submission.previewSrc,
+    width: submission.width,
+    height: submission.height,
+    categoryId: submission.categoryId,
+    tags: submission.tags,
+    submittedAt: submission.submittedAt.toISOString(),
+    submitterName: submission.submitterName,
+    submitterLogin: submission.submitterLogin,
+    similarCandidates: similar.map(toSimilarCandidate),
+  };
+}
+
+function toSimilarCandidate(candidate: SimilarSticker): SimilarCandidate {
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    previewSrc: candidate.previewSrc,
+    status: candidate.status,
+    distance: candidate.distance,
+  };
 }

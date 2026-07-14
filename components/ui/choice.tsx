@@ -29,7 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type ChoiceRootProps = {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
   isDisabled?: boolean;
   onSelectionChange?: (key: React.Key | null) => void;
@@ -40,12 +40,9 @@ type ChoiceContextValue = {
   selectedKey: React.Key | null;
   disabled: boolean;
   open: boolean;
-  labelVersion: number;
   popoverId: string;
   rootRef: RefObject<HTMLDivElement | null>;
-  labelFor: (key: React.Key | null) => string;
-  register: (key: React.Key, label: string) => void;
-  select: (key: React.Key | null, label?: string) => void;
+  select: (key: React.Key | null) => void;
   setOpen: (open: boolean) => void;
 };
 
@@ -65,42 +62,33 @@ function ChoiceRoot({
   selectedKey = null,
 }: ChoiceRootProps) {
   const [open, setOpen] = useState(false);
-  const [labelVersion, setLabelVersion] = useState(0);
-  const labels = useRef(new Map<string, string>());
   const rootRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
 
-  const register = useCallback((key: React.Key, label: string) => {
-    const labelKey = String(key);
-    if (labels.current.get(labelKey) === label) return;
-    labels.current.set(labelKey, label);
-    setLabelVersion((value) => value + 1);
-  }, []);
   const select = useCallback(
-    (key: React.Key | null, label = "") => {
-      if (key !== null && label) labels.current.set(String(key), label);
+    (key: React.Key | null) => {
       onSelectionChange?.(key);
       setOpen(false);
     },
     [onSelectionChange],
   );
 
-  useEffect(() => closeOnOutsidePointer(open, rootRef, popoverId, setOpen), [open, popoverId]);
+  useEffect(
+    () => closeOnOutsidePointer({ open, popoverId, rootRef, setOpen }),
+    [open, popoverId],
+  );
 
   const value = useMemo<ChoiceContextValue>(
     () => ({
       selectedKey,
       disabled: isDisabled,
       open,
-      labelVersion,
       popoverId,
       rootRef,
-      labelFor: (key) => (key === null ? "" : (labels.current.get(String(key)) ?? String(key))),
-      register,
       select,
       setOpen,
     }),
-    [isDisabled, labelVersion, open, popoverId, register, select, selectedKey],
+    [isDisabled, open, popoverId, select, selectedKey],
   );
 
   return (
@@ -112,19 +100,19 @@ function ChoiceRoot({
   );
 }
 
-function closeOnOutsidePointer(
-  open: boolean,
-  rootRef: React.RefObject<HTMLDivElement | null>,
-  popoverId: string,
-  setOpen: (open: boolean) => void,
-) {
-  if (!open) return;
+function closeOnOutsidePointer(options: {
+  readonly open: boolean;
+  readonly rootRef: React.RefObject<HTMLDivElement | null>;
+  readonly popoverId: string;
+  readonly setOpen: (open: boolean) => void;
+}) {
+  if (!options.open) return;
   const onPointerDown = (event: PointerEvent) => {
     if (!(event.target instanceof Element)) return;
     const target = event.target;
-    if (rootRef.current?.contains(target)) return;
-    if (target.closest(`[data-choice-popover="${popoverId}"]`)) return;
-    setOpen(false);
+    if (options.rootRef.current?.contains(target)) return;
+    if (target.closest(`[data-choice-popover="${options.popoverId}"]`)) return;
+    options.setOpen(false);
   };
   document.addEventListener("pointerdown", onPointerDown);
   return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -192,11 +180,14 @@ function AutocompleteTrigger({ className, children, onKeyDown, ...props }: HTMLA
   );
 }
 
-function ChoiceValue({ className }: HTMLAttributes<HTMLSpanElement>) {
-  const choice = useChoice();
+type ChoiceValueProps = Omit<HTMLAttributes<HTMLSpanElement>, "children"> & {
+  children: ReactNode;
+};
+
+function ChoiceValue({ children, className, ...props }: ChoiceValueProps) {
   return (
-    <span className={cn("min-w-0 flex-1 truncate", className)}>
-      {choice.labelFor(choice.selectedKey)}
+    <span className={cn("min-w-0 flex-1 truncate", className)} {...props}>
+      {children}
     </span>
   );
 }
@@ -228,7 +219,7 @@ function ChoicePopover({
     };
   }, [align, choice.open, choice.rootRef, side]);
 
-  if (!choice.open) return <div hidden>{children}</div>;
+  if (!choice.open) return null;
   if (!position) return null;
 
   const style = {

@@ -1,15 +1,20 @@
 import "server-only";
 
-import { unstable_cache } from "next/cache";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories, stickerSimilarityDecisions, stickers, users } from "@/drizzle/schema";
+import {
+  categories,
+  stickerSimilarityDecisions,
+  stickers,
+  users,
+} from "@/drizzle/schema";
 import {
   buildDuplicateGroups,
-  findSimilarRows,
   findSimilarRowsForSources,
   similarityPairKey,
   type DuplicateGroup,
+  type SimilarityCandidateRow,
   type SimilarityRow,
   type SimilaritySource,
   type SimilarSticker,
@@ -19,63 +24,79 @@ import { assertVisualHashV2 } from "@/lib/visual-hash";
 const ACTIVE_STATUSES = ["approved", "pending"] as const;
 export const SIMILAR_STICKERS_CACHE_TAG = "similar-stickers";
 
-export async function assertActiveVisualHashesComplete(): Promise<void> {
-  const missing = await db
-    .select({ id: stickers.id })
-    .from(stickers)
-    .where(and(inArray(stickers.status, ACTIVE_STATUSES), isNull(stickers.visualHashV2)))
-    .orderBy(asc(stickers.id))
-    .limit(5);
-  if (missing.length > 0) throw missingVisualHashError(missing.map((row) => row.id));
-}
-
-export async function findSimilarStickers(source: SimilaritySource): Promise<SimilarSticker[]> {
-  assertVisualHashV2(source.visualHashV2);
-  const [rows, ignoredPairs] = await Promise.all([
-    loadActiveSimilarityRows(),
-    loadIgnoredPairKeys(),
-  ]);
-  return findSimilarRows(source, rows, { ignoredPairs });
-}
-
 export async function findSimilarStickersForSources(
-  sources: readonly { id: string; characterId: string; visualHashV2: string | null }[],
+  sources: readonly {
+    readonly id: string;
+    readonly characterId: string;
+    readonly visualHashV2: string | null;
+  }[],
 ): Promise<Map<string, SimilarSticker[]>> {
-  const [rows, ignoredPairs] = await Promise.all([
-    loadActiveSimilarityRows(),
-    loadIgnoredPairKeys(),
+  if (sources.length === 0) return new Map();
+  const characterIds = [...new Set(sources.map((source) => source.characterId))].sort();
+  const [candidateGroups, ignoredRows] = await Promise.all([
+    Promise.all(characterIds.map(loadCachedCandidatesByCharacter)),
+    listCachedIgnoredPairRows(),
   ]);
   const checkedSources = sources.map(checkedSource);
-  return findSimilarRowsForSources(checkedSources, rows, { ignoredPairs });
+  return findSimilarRowsForSources(checkedSources, candidateGroups.flat(), {
+    ignoredPairs: toIgnoredPairKeys(ignoredRows),
+  });
 }
 
 export async function listDuplicateGroups(): Promise<DuplicateGroup[]> {
-  return listCachedDuplicateGroups();
-}
-
-const listCachedDuplicateGroups = unstable_cache(
-  buildDuplicateGroupsFromDb,
-  ["duplicate-groups"],
-  { tags: [SIMILAR_STICKERS_CACHE_TAG] },
-);
-
-async function buildDuplicateGroupsFromDb(): Promise<DuplicateGroup[]> {
-  const [rows, ignoredPairs] = await Promise.all([
+  "use cache";
+  cacheLife("max");
+  cacheTag(SIMILAR_STICKERS_CACHE_TAG);
+  const [rows, ignoredRows] = await Promise.all([
     loadActiveSimilarityRows(),
-    loadIgnoredPairKeys(),
+    queryIgnoredPairRows(),
   ]);
-  return buildDuplicateGroups(rows, { ignoredPairs });
+  return buildDuplicateGroups(rows, {
+    ignoredPairs: toIgnoredPairKeys(ignoredRows),
+  });
 }
 
-async function loadIgnoredPairKeys(): Promise<ReadonlySet<string>> {
+async function loadCachedCandidatesByCharacter(
+  characterId: string,
+): Promise<SimilarityCandidateRow[]> {
+  "use cache";
+  cacheLife("max");
+  cacheTag(SIMILAR_STICKERS_CACHE_TAG);
   const rows = await db
+    .select({
+      id: stickers.id,
+      characterId: categories.characterId,
+      name: stickers.name,
+      previewSrc: stickers.previewSrc,
+      status: stickers.status,
+      visualHashV2: stickers.visualHashV2,
+    })
+    .from(stickers)
+    .innerJoin(categories, eq(stickers.categoryId, categories.id))
+    .where(
+      and(
+        inArray(stickers.status, ACTIVE_STATUSES),
+        eq(categories.characterId, characterId),
+      ),
+    );
+  return rows.map(requireCandidateRow);
+}
+
+async function listCachedIgnoredPairRows(): Promise<IgnoredPairRow[]> {
+  "use cache";
+  cacheLife("max");
+  cacheTag(SIMILAR_STICKERS_CACHE_TAG);
+  return queryIgnoredPairRows();
+}
+
+async function queryIgnoredPairRows(): Promise<IgnoredPairRow[]> {
+  return db
     .select({
       leftStickerId: stickerSimilarityDecisions.leftStickerId,
       rightStickerId: stickerSimilarityDecisions.rightStickerId,
     })
     .from(stickerSimilarityDecisions)
     .where(eq(stickerSimilarityDecisions.decision, "keep_both"));
-  return new Set(rows.map((row) => similarityPairKey(row.leftStickerId, row.rightStickerId)));
 }
 
 async function loadActiveSimilarityRows(): Promise<SimilarityRow[]> {
@@ -104,23 +125,52 @@ async function loadActiveSimilarityRows(): Promise<SimilarityRow[]> {
 }
 
 function checkedSource(source: {
-  id: string;
-  characterId: string;
-  visualHashV2: string | null;
+  readonly id: string;
+  readonly characterId: string;
+  readonly visualHashV2: string | null;
 }): SimilaritySource {
   if (!source.visualHashV2) throw missingVisualHashError([source.id]);
   assertVisualHashV2(source.visualHashV2, `贴纸 ${source.id} visualHashV2`);
-  return { id: source.id, characterId: source.characterId, visualHashV2: source.visualHashV2 };
+  return { ...source, visualHashV2: source.visualHashV2 };
+}
+
+function requireCandidateRow(row: CandidateRowQuery): SimilarityCandidateRow {
+  const common = requireActiveFields(row);
+  return {
+    id: row.id,
+    characterId: row.characterId,
+    name: row.name,
+    previewSrc: common.previewSrc,
+    status: common.status,
+    visualHashV2: common.visualHashV2,
+  };
 }
 
 function requireSimilarityRow(row: SimilarityRowQuery): SimilarityRow {
-  if (row.status === "rejected") throw new Error(`rejected 贴纸不应参与相似度检查：${row.id}`);
+  const common = requireActiveFields(row);
+  return { ...row, ...common };
+}
+
+function requireActiveFields(row: CandidateRowQuery) {
+  if (row.status === "rejected") {
+    throw new Error(`rejected 贴纸不应参与相似度检查：${row.id}`);
+  }
   if (!row.previewSrc) {
     throw new Error(`贴纸缺少 previewSrc：${row.id}，请先运行 pnpm db:backfill-previews。`);
   }
   if (!row.visualHashV2) throw missingVisualHashError([row.id]);
   assertVisualHashV2(row.visualHashV2, `贴纸 ${row.id} visualHashV2`);
-  return { ...row, previewSrc: row.previewSrc, status: row.status, visualHashV2: row.visualHashV2 };
+  return {
+    previewSrc: row.previewSrc,
+    status: row.status,
+    visualHashV2: row.visualHashV2,
+  } as const;
+}
+
+function toIgnoredPairKeys(rows: readonly IgnoredPairRow[]): ReadonlySet<string> {
+  return new Set(
+    rows.map((row) => similarityPairKey(row.leftStickerId, row.rightStickerId)),
+  );
 }
 
 function missingVisualHashError(ids: readonly string[]): Error {
@@ -129,8 +179,21 @@ function missingVisualHashError(ids: readonly string[]): Error {
   );
 }
 
-type SimilarityRowQuery = Omit<SimilarityRow, "previewSrc" | "status" | "visualHashV2"> & {
-  previewSrc: string | null;
-  status: "approved" | "pending" | "rejected";
-  visualHashV2: string | null;
+interface IgnoredPairRow {
+  readonly leftStickerId: string;
+  readonly rightStickerId: string;
+}
+
+type CandidateRowQuery = Omit<
+  SimilarityCandidateRow,
+  "previewSrc" | "status" | "visualHashV2"
+> & {
+  readonly previewSrc: string | null;
+  readonly status: "approved" | "pending" | "rejected";
+  readonly visualHashV2: string | null;
 };
+
+type SimilarityRowQuery = Omit<
+  SimilarityRow,
+  "previewSrc" | "status" | "visualHashV2"
+> & CandidateRowQuery;

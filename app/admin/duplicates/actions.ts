@@ -1,13 +1,15 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
-import { and, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { stickerSimilarityDecisions, stickers } from "@/drizzle/schema";
+import { categories, stickerSimilarityDecisions, stickers } from "@/drizzle/schema";
 import { requireEditor } from "@/lib/auth-helpers";
-import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
-import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
-import { SIMILAR_STICKERS_CACHE_TAG, listDuplicateGroups } from "@/lib/queries/similar-stickers";
+import { listDuplicateGroups } from "@/lib/queries/similar-stickers";
+import {
+  updatePendingStickerData,
+  updatePublishedStickerData,
+  updateSimilarityData,
+} from "@/lib/action-cache-updates";
 import { normalizePair } from "@/lib/similarity-groups";
 
 const ACTIVE_STATUSES = ["approved", "pending"] as const;
@@ -25,6 +27,7 @@ export async function rejectDuplicateStickers(input: RejectDuplicateInput): Prom
   await requireEditor();
   const { keepIds, rejectIds } = normalizeRejectInput(input);
   await ensureSameDuplicateGroup(keepIds[0], [...keepIds.slice(1), ...rejectIds]);
+  const affected = await listAffectedStickers(rejectIds);
 
   const result = await db
     .update(stickers)
@@ -38,7 +41,7 @@ export async function rejectDuplicateStickers(input: RejectDuplicateInput): Prom
     .returning({ id: stickers.id });
 
   if (result.length !== rejectIds.length) throw new Error("部分重复项不存在或已被处理。");
-  revalidateDuplicatePages();
+  updateRejectedDuplicateData(affected);
 }
 
 export async function markVariantStickers(input: MarkVariantInput): Promise<void> {
@@ -50,7 +53,7 @@ export async function markVariantStickers(input: MarkVariantInput): Promise<void
   if (values.length === 0) throw new Error("差分保留至少需要两张贴纸。");
 
   await db.insert(stickerSimilarityDecisions).values(values).onConflictDoNothing();
-  revalidateDuplicatePages();
+  updateSimilarityData();
 }
 
 function normalizeRejectInput(input: RejectDuplicateInput) {
@@ -110,10 +113,27 @@ function duplicateReason(keepIds: readonly string[]): string {
   return `旧数据查重：与保留项 ${keepIds.join(", ")} 视觉相似，人工标记为重复。`;
 }
 
-function revalidateDuplicatePages() {
-  revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
-  revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
-  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
-  revalidatePath("/");
-  revalidatePath("/admin");
+function listAffectedStickers(ids: readonly string[]) {
+  return db
+    .select({
+      status: stickers.status,
+      characterId: categories.characterId,
+    })
+    .from(stickers)
+    .innerJoin(categories, eq(stickers.categoryId, categories.id))
+    .where(inArray(stickers.id, ids));
+}
+
+function updateRejectedDuplicateData(
+  rows: Awaited<ReturnType<typeof listAffectedStickers>>,
+): void {
+  const approved = rows.filter((row) => row.status === "approved");
+  if (approved.length === 0) {
+    updatePendingStickerData();
+    return;
+  }
+  updatePublishedStickerData({
+    characterIds: approved.map((row) => row.characterId),
+    countsChanged: true,
+  });
 }

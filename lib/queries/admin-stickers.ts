@@ -1,26 +1,11 @@
-import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, characters, stickers, users } from "@/drizzle/schema";
+import type { AdminStickerListItem } from "@/lib/types";
 
 export type StickerStatus = "approved" | "pending" | "rejected";
 
-export interface AdminStickerRow {
-  id: string;
-  name: string;
-  src: string;
-  previewSrc: string;
-  width: number;
-  height: number;
-  ext: "png" | "gif" | "webp" | "jpg" | "jpeg";
-  hash: string;
-  categoryId: string;
-  tags: string[];
-  status: StickerStatus;
-  submittedAt: Date;
-  approvedAt: Date | null;
-  submitterName: string | null;
-  submitterLogin: string | null;
-}
+export type AdminStickerRow = AdminStickerListItem;
 
 export interface ListOptions {
   status?: StickerStatus;
@@ -56,7 +41,7 @@ export interface ListResult {
 }
 
 export async function listStickersPaginated(opts: ListOptions): Promise<ListResult> {
-  const where = await buildWhere(opts);
+  const where = buildWhere(opts);
   const offset = Math.max(0, (opts.page - 1) * opts.pageSize);
   const orderBy = buildOrderBy(opts.sort);
 
@@ -65,17 +50,14 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       .select({
         id: stickers.id,
         name: stickers.name,
-        src: stickers.src,
         previewSrc: stickers.previewSrc,
         width: stickers.width,
         height: stickers.height,
         ext: stickers.ext,
-        hash: stickers.hash,
         categoryId: stickers.categoryId,
         tags: stickers.tags,
         status: stickers.status,
         submittedAt: stickers.submittedAt,
-        approvedAt: stickers.approvedAt,
         submitterName: users.name,
         submitterLogin: users.githubLogin,
       })
@@ -87,13 +69,7 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
       .orderBy(...orderBy)
       .limit(opts.pageSize)
       .offset(offset),
-    db
-      .select({ c: count() })
-      .from(stickers)
-      .leftJoin(categories, eq(stickers.categoryId, categories.id))
-      .leftJoin(characters, eq(categories.characterId, characters.id))
-      .leftJoin(users, eq(stickers.submittedById, users.id))
-      .where(where),
+    buildCountQuery(opts, where),
   ]);
 
   const total = Number(totalRows[0]?.c ?? 0);
@@ -107,31 +83,35 @@ export async function listStickersPaginated(opts: ListOptions): Promise<ListResu
   };
 }
 
-async function buildWhere(opts: ListOptions) {
+function buildWhere(opts: ListOptions) {
   const conditions: SQL[] = [];
   if (opts.status) conditions.push(eq(stickers.status, opts.status));
-  await addCategoryCondition(conditions, opts);
+  addCategoryCondition(conditions, opts);
   if (opts.tag) conditions.push(sql`${opts.tag} = ANY(${stickers.tags})`);
   if (opts.q) conditions.push(buildTextSearchCondition(opts.q));
   if (opts.submitter) conditions.push(buildSubmitterCondition(opts.submitter));
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-async function addCategoryCondition(conditions: SQL[], opts: ListOptions) {
+function addCategoryCondition(conditions: SQL[], opts: ListOptions) {
   if (opts.categoryId) {
     conditions.push(eq(stickers.categoryId, opts.categoryId));
     return;
   }
   if (!opts.characterId) return;
-  const subRows = await db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(eq(categories.characterId, opts.characterId));
-  if (subRows.length === 0) {
-    conditions.push(sql`false`);
-    return;
+  conditions.push(eq(categories.characterId, opts.characterId));
+}
+
+function buildCountQuery(opts: ListOptions, where: SQL | undefined) {
+  const base = db.select({ c: count() }).from(stickers).$dynamic();
+  let query: typeof base = base;
+  if (opts.characterId) {
+    query = query.innerJoin(categories, eq(stickers.categoryId, categories.id));
   }
-  conditions.push(inArray(stickers.categoryId, subRows.map((r) => r.id)));
+  if (opts.submitter) {
+    query = query.leftJoin(users, eq(stickers.submittedById, users.id));
+  }
+  return query.where(where);
 }
 
 function buildTextSearchCondition(text: string) {
@@ -153,9 +133,6 @@ function buildSubmitterCondition(text: string) {
 }
 
 function buildOrderBy(sort: ListOptions["sort"]) {
-  if (sort === "oldest") return [asc(stickers.submittedAt)];
-  if (sort === "name") return [asc(stickers.name)];
-  if (sort === "name-desc") return [desc(stickers.name)];
   if (sort === "category") return [
     asc(characters.sortOrder),
     asc(categories.sortOrder),
@@ -168,11 +145,8 @@ function buildOrderBy(sort: ListOptions["sort"]) {
     desc(categories.slug),
     desc(stickers.submittedAt),
   ];
-  if (sort === "status") return [asc(stickers.status), desc(stickers.submittedAt)];
-  if (sort === "status-desc") return [desc(stickers.status), desc(stickers.submittedAt)];
-  if (sort === "submitter") return [asc(users.githubLogin), asc(users.name)];
-  if (sort === "submitter-desc") return [desc(users.githubLogin), desc(users.name)];
-  if (sort === "newest") return [desc(stickers.submittedAt)];
+  const simpleOrder = SIMPLE_ORDER_BY[sort ?? "grouped"];
+  if (simpleOrder) return simpleOrder();
   return [
     asc(characters.sortOrder),
     asc(categories.characterId),
@@ -182,25 +156,37 @@ function buildOrderBy(sort: ListOptions["sort"]) {
   ];
 }
 
-export async function countByStatus(): Promise<Record<StickerStatus, number>> {
+const SIMPLE_ORDER_BY: Readonly<Partial<Record<StickerSort, () => SQL[]>>> = {
+  oldest: () => [asc(stickers.submittedAt)],
+  name: () => [asc(stickers.name)],
+  "name-desc": () => [desc(stickers.name)],
+  status: () => [asc(stickers.status), desc(stickers.submittedAt)],
+  "status-desc": () => [desc(stickers.status), desc(stickers.submittedAt)],
+  submitter: () => [asc(users.githubLogin), asc(users.name)],
+  "submitter-desc": () => [desc(users.githubLogin), desc(users.name)],
+  newest: () => [desc(stickers.submittedAt)],
+};
+
+export async function countPendingStickers(): Promise<number> {
   const rows = await db
-    .select({ status: stickers.status, c: count() })
+    .select({ c: count() })
     .from(stickers)
-    .groupBy(stickers.status);
-  const result: Record<StickerStatus, number> = { approved: 0, pending: 0, rejected: 0 };
-  rows.forEach((r) => {
-    result[r.status] = Number(r.c);
-  });
-  return result;
+    .where(eq(stickers.status, "pending"));
+  return Number(rows[0]?.c ?? 0);
 }
 
-type QueriedAdminStickerRow = Omit<AdminStickerRow, "previewSrc"> & {
+type QueriedAdminStickerRow = Omit<AdminStickerRow, "previewSrc" | "submittedAt"> & {
   previewSrc: string | null;
+  submittedAt: Date;
 };
 
 function requirePreviewSrc(row: QueriedAdminStickerRow): AdminStickerRow {
   if (!row.previewSrc) {
     throw new Error(`贴纸缺少 previewSrc：${row.id}，请先运行 pnpm db:backfill-previews。`);
   }
-  return { ...row, previewSrc: row.previewSrc };
+  return {
+    ...row,
+    previewSrc: row.previewSrc,
+    submittedAt: row.submittedAt.toISOString(),
+  };
 }

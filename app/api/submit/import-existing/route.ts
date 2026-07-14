@@ -1,17 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth-helpers";
-import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
-import { revalidateStickerViews } from "@/lib/revalidate-stickers";
+import { revalidatePendingStickerData } from "@/lib/route-cache-revalidation";
 import { insertPendingSticker, isDuplicateStickerError } from "@/lib/sticker-record";
 import { importExistingStickerObject } from "@/lib/upload";
-
-export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
     const session = await requireUser();
     const input = await readImportInput(request);
-    await assertActiveVisualHashesComplete();
     const uploaded = await importExistingStickerObject(input.hash, input.fileName, input.category);
     if (!uploaded) return NextResponse.json({ ok: true, imported: false });
 
@@ -27,7 +23,7 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    revalidateStickerViews();
+    revalidatePendingStickerData();
     return NextResponse.json({ ok: true, imported: true, id: uploaded.hash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "导入已有图片失败。";

@@ -1,37 +1,46 @@
 #!/usr/bin/env tsx
-/**
- * 一次性脚本：生成 PWA 占位图标到 public/icons/
- * 用户后续可用真正的 logo 直接覆盖同名文件。
- */
-import sharp from "sharp";
+
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import sharp from "sharp";
 
-const OUT = path.resolve(process.cwd(), "public/icons");
+const ROOT = process.cwd();
+const ICON_DIRECTORY = path.join(ROOT, "public", "icons");
+const FAVICON_SIZE = 64;
+const PNG_COMPRESSION_LEVEL = 9;
+const SOURCE_ICON = path.join(ICON_DIRECTORY, "icon-192.png");
+const OPTIMIZED_ICONS = [
+  SOURCE_ICON,
+  path.join(ICON_DIRECTORY, "icon-512.png"),
+  path.join(ROOT, "app", "apple-icon.png"),
+] as const;
 
-const SVG = (size: number) => `
-<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#f97316"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="96" fill="url(#g)"/>
-  <text x="50%" y="50%" font-size="320" text-anchor="middle" dominant-baseline="central" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🐱</text>
-</svg>
-`;
-
-async function main() {
-  await fs.mkdir(OUT, { recursive: true });
-  for (const size of [192, 512]) {
-    const buf = await sharp(Buffer.from(SVG(size))).resize(size, size).png().toBuffer();
-    await fs.writeFile(path.join(OUT, `icon-${size}.png`), buf);
-    console.log(`✓ icon-${size}.png`);
-  }
+async function optimizePng(filePath: string): Promise<void> {
+  const input = await fs.readFile(filePath);
+  const output = await sharp(input)
+    .png({ adaptiveFiltering: true, compressionLevel: PNG_COMPRESSION_LEVEL })
+    .toBuffer();
+  await fs.writeFile(filePath, output);
+  console.log(`✓ ${path.relative(ROOT, filePath)}`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
+async function createFavicon(): Promise<void> {
+  const source = await fs.readFile(SOURCE_ICON);
+  const output = await sharp(source)
+    .resize(FAVICON_SIZE, FAVICON_SIZE)
+    .png({ adaptiveFiltering: true, compressionLevel: PNG_COMPRESSION_LEVEL })
+    .toBuffer();
+  const favicon = path.join(ICON_DIRECTORY, `favicon-${FAVICON_SIZE}.png`);
+  await fs.writeFile(favicon, output);
+  console.log(`✓ ${path.relative(ROOT, favicon)}`);
+}
+
+async function main(): Promise<void> {
+  await Promise.all(OPTIMIZED_ICONS.map(optimizePng));
+  await createFavicon();
+}
+
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
 });

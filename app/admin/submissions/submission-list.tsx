@@ -5,37 +5,19 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Input } from "@/components/ui/heroui-compat";
 import { useFeedback } from "@/components/feedback";
-import type { Category, Character } from "@/lib/types";
+import type {
+  Category,
+  CharacterRef,
+  SimilarCandidate,
+  SubmissionReviewItem,
+} from "@/lib/types";
 import { CategorySelect } from "@/app/admin/category-select";
 import { approveSubmission, rejectSubmission } from "./actions";
 
-interface SimilarCandidate {
-  id: string;
-  name: string;
-  previewSrc: string;
-  status: "approved" | "pending";
-  distance: number;
-}
-
-interface Submission {
-  id: string;
-  name: string;
-  src: string;
-  previewSrc: string;
-  width: number;
-  height: number;
-  categoryId: string;
-  tags: string[];
-  submittedAt: Date;
-  submitterName: string | null;
-  submitterLogin: string | null;
-  similarCandidates: readonly SimilarCandidate[];
-}
-
 interface Props {
-  submissions: readonly Submission[];
+  submissions: readonly SubmissionReviewItem[];
   categories: readonly Category[];
-  characters: readonly Character[];
+  characters: readonly CharacterRef[];
 }
 
 export function SubmissionList({ submissions, categories, characters }: Props) {
@@ -54,9 +36,9 @@ function SubmissionCard({
   categories,
   characters,
 }: {
-  submission: Submission;
+  submission: SubmissionReviewItem;
   categories: readonly Category[];
-  characters: readonly Character[];
+  characters: readonly CharacterRef[];
 }) {
   const router = useRouter();
   const feedback = useFeedback();
@@ -100,7 +82,7 @@ function SubmissionCard({
   );
 }
 
-function SubmissionPreview({ submission }: { submission: Submission }) {
+function SubmissionPreview({ submission }: { submission: SubmissionReviewItem }) {
   return (
     <div className="flex-shrink-0">
       <Image
@@ -242,7 +224,12 @@ async function runSubmissionAction(
   }
 }
 
-function approvalFormData(options: { submission: Submission; subCategory: string; name: string; tags: string }) {
+function approvalFormData(options: {
+  submission: SubmissionReviewItem;
+  subCategory: string;
+  name: string;
+  tags: string;
+}) {
   const formData = new FormData();
   formData.set("id", options.submission.id);
   formData.set("category", options.subCategory);
@@ -251,7 +238,10 @@ function approvalFormData(options: { submission: Submission; subCategory: string
   return formData;
 }
 
-function rejectionFormData(options: { submission: Submission; reason: string }) {
+function rejectionFormData(options: {
+  submission: SubmissionReviewItem;
+  reason: string;
+}) {
   const formData = new FormData();
   formData.set("id", options.submission.id);
   formData.set("reason", options.reason);
@@ -272,7 +262,7 @@ function formatDistance(distance: number): string {
 
 interface SubmissionFieldsProps {
   categories: readonly Category[];
-  characters: readonly Character[];
+  characters: readonly CharacterRef[];
   character: string;
   name: string;
   reason: string;
@@ -296,5 +286,5 @@ interface SubmissionMutationOptions {
   router: ReturnType<typeof useRouter>;
   setError: (value: string | null) => void;
   startTransition: (callback: () => void) => void;
-  submission: Submission;
+  submission: SubmissionReviewItem;
 }

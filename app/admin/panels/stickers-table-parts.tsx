@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
-import { memo } from "react";
-import { Button, Chip, ListBox, Select } from "@/components/ui/heroui-compat";
-import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
+import { Chip, ListBox, Select } from "@/components/ui/heroui-compat";
+import type { StickerStatus } from "@/lib/queries/admin-stickers";
+import { selectedOptionLabel } from "@/lib/option-label";
 
 export const STATUS_LABEL: Record<StickerStatus, string> = {
   approved: "已发布",
@@ -29,7 +28,6 @@ export function StatusChip({ status }: { status: StickerStatus }) {
     </Chip>
   );
 }
-
 export function PageSizeSelect({
   value,
   onChange,
@@ -45,7 +43,9 @@ export function PageSizeSelect({
       className="w-28"
     >
       <Select.Trigger className="field-trigger flex h-9 min-h-9 items-center gap-2 px-2">
-        <Select.Value className="min-w-0 flex-1 truncate" />
+        <Select.Value className="min-w-0 flex-1 truncate">
+          {selectedOptionLabel(PAGE_SIZE_OPTIONS, value)}
+        </Select.Value>
       </Select.Trigger>
       <Select.Popover className="motion-popover popover-surface">
         <ListBox>
@@ -53,7 +53,6 @@ export function PageSizeSelect({
             <ListBox.Item
               key={option.value}
               id={option.value}
-              textValue={option.label}
               className="listbox-option"
             >
               {option.label}
@@ -64,78 +63,3 @@ export function PageSizeSelect({
     </Select>
   );
 }
-
-export const StickerMobileCard = memo(function StickerMobileCard({
-  categoryDisplay,
-  item,
-  selected,
-  onToggle,
-  onEdit,
-}: {
-  categoryDisplay: string;
-  item: AdminStickerRow;
-  selected: boolean;
-  onToggle: (id: string) => void;
-  onEdit: (item: AdminStickerRow) => void;
-}) {
-  return (
-    <article className={`admin-panel p-3 ${selected ? "border-primary/60 bg-primary/5" : ""}`}>
-      <div className="flex gap-3">
-        <div className="relative h-20 w-20 flex-none overflow-hidden rounded-lg bg-default-100">
-          <Image
-            src={item.previewSrc}
-            alt={item.name}
-            fill
-            sizes="80px"
-            className="object-contain p-1.5"
-            unoptimized
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="truncate text-sm font-medium">{item.name}</h3>
-              <p className="mt-1 font-mono text-[11px] text-default-400">
-                {item.id} · {item.width}×{item.height} · {item.ext}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant={selected ? "primary" : "ghost"}
-              onPress={() => onToggle(item.id)}
-              className="motion-press flex-none transition-colors duration-150"
-              aria-pressed={selected}
-            >
-              {selected ? "已选择" : "选择"}
-            </Button>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1">
-            <StatusChip status={item.status} />
-            <Chip size="sm" variant="soft">
-              <Chip.Label>{categoryDisplay}</Chip.Label>
-            </Chip>
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1">
-        {item.tags.length === 0 ? (
-          <span className="text-xs text-default-400">无标签</span>
-        ) : (
-          item.tags.slice(0, 6).map((tag) => (
-            <Chip key={tag} size="sm" variant="soft">
-              <Chip.Label>#{tag}</Chip.Label>
-            </Chip>
-          ))
-        )}
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-default-100 pt-3">
-        <span className="text-xs text-default-500">
-          {item.submitterLogin ? `@${item.submitterLogin}` : (item.submitterName ?? "—")}
-        </span>
-        <Button size="sm" variant="ghost" onPress={() => onEdit(item)} className="motion-press">
-          编辑
-        </Button>
-      </div>
-    </article>
-  );
-});

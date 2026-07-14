@@ -1,0 +1,15 @@
+@import "../styles/admin-tabs.css";
+@import "../styles/admin-components.css";
+@import "../styles/upload.css";
+@import "../styles/admin-responsive.css";
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-tab {
+    transition: none;
+  }
+
+  .admin-tab:hover,
+  .admin-tab:active {
+    transform: none;
+  }
+}

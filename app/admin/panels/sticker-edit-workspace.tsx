@@ -6,6 +6,7 @@ import { Autocomplete, Button, Chip, Input, ListBox, Select } from "@/components
 import type { AdminStickerRow, StickerStatus } from "@/lib/queries/admin-stickers";
 import type { Category, Character } from "@/lib/types";
 import type { StickerEditActions, StickerEditState } from "./sticker-edit-modal";
+import { selectedOptionLabel } from "@/lib/option-label";
 
 const STATUS_OPTIONS: readonly { value: StickerStatus; label: string }[] = [
   { value: "approved", label: "已发布" },
@@ -196,14 +197,14 @@ function OptionAutocomplete({
   return (
     <Autocomplete selectedKey={value} onSelectionChange={(key) => onChange(String(key ?? ""))}>
       <Autocomplete.Trigger aria-label="选择" className="field-trigger modal-field bg-content1">
-        <Autocomplete.Value />
+        <Autocomplete.Value>{selectedOptionLabel(options, value)}</Autocomplete.Value>
         <Autocomplete.ClearButton />
       </Autocomplete.Trigger>
       <Autocomplete.Popover className="motion-popover popover-surface max-h-64 overflow-auto p-2">
         <Input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索..." />
         <ListBox className="mt-2 max-h-48 overflow-auto">
           {filteredOptions.map((option) => (
-            <ListBox.Item key={option.value} id={option.value} textValue={option.label} className="listbox-option">
+            <ListBox.Item key={option.value} id={option.value} className="listbox-option">
               {option.label}
             </ListBox.Item>
           ))}
@@ -217,13 +218,13 @@ function StatusSelect({ onChange, value }: { onChange: (value: StickerStatus) =>
   return (
     <Select selectedKey={value} onSelectionChange={(key) => onChange(String(key) as StickerStatus)}>
       <Select.Trigger aria-label="状态" className="field-trigger modal-field bg-content1">
-        <Select.Value />
+        <Select.Value>{selectedOptionLabel(STATUS_OPTIONS, value)}</Select.Value>
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover className="motion-popover popover-surface max-h-56 overflow-auto">
         <ListBox>
           {STATUS_OPTIONS.map((option) => (
-            <ListBox.Item key={option.value} id={option.value} textValue={option.label} className="listbox-option">
+            <ListBox.Item key={option.value} id={option.value} className="listbox-option">
               {option.label}
             </ListBox.Item>
           ))}

@@ -3,19 +3,13 @@
 import { Checkbox } from "@/components/ui/heroui-compat";
 import type { AdminStickerRow, StickerSort } from "@/lib/queries/admin-stickers";
 import type { Category, Character } from "@/lib/types";
-import { StickerDesktopRow } from "./stickers-desktop-row";
 import {
   CategoryFilterContent,
   StatusFilterContent,
   TextFilterContent,
 } from "./stickers-table-filter-fields";
 import { FilterHeader } from "./stickers-table-header";
-import {
-  categoryDisplayName,
-  createCategoryDisplayMap,
-  type StickerFilterUpdates,
-  type StickerTableFilters,
-} from "./stickers-table-query";
+import type { StickerFilterUpdates, StickerTableFilters } from "./stickers-table-query";
 
 interface Props {
   categories: readonly Category[];
@@ -23,9 +17,7 @@ interface Props {
   filters: StickerTableFilters;
   items: readonly AdminStickerRow[];
   onApplyFilter: (updates: StickerFilterUpdates) => void;
-  onEdit: (item: AdminStickerRow) => void;
   onSort: (sort: StickerSort) => void;
-  onToggle: (id: string) => void;
   onToggleAll: () => void;
   selectedSet: ReadonlySet<string>;
   sort: StickerSort;
@@ -37,14 +29,11 @@ export function StickersDesktopTable({
   filters,
   items,
   onApplyFilter,
-  onEdit,
   onSort,
-  onToggle,
   onToggleAll,
   selectedSet,
   sort,
 }: Props) {
-  const categoryDisplayMap = createCategoryDisplayMap(categories);
   return (
     <div className="desktop-table-wrap overflow-x-auto rounded-lg border border-border-subtle bg-surface/80 shadow-sm">
       <table className="w-full min-w-[980px] text-left text-sm">
@@ -58,13 +47,6 @@ export function StickersDesktopTable({
           onToggleAll={onToggleAll}
           selectedSet={selectedSet}
           sort={sort}
-        />
-        <StickerTableBody
-          categoryDisplayMap={categoryDisplayMap}
-          items={items}
-          onEdit={onEdit}
-          onToggle={onToggle}
-          selectedSet={selectedSet}
         />
       </table>
     </div>
@@ -81,7 +63,7 @@ function StickerTableHead({
   onToggleAll,
   selectedSet,
   sort,
-}: Omit<Props, "onEdit" | "onToggle">) {
+}: Props) {
   return (
     <thead className="border-b border-border-subtle bg-surface-muted/70 text-xs text-default-500">
       <tr>
@@ -112,43 +94,6 @@ function StickerTableHead({
         <th className="p-3">操作</th>
       </tr>
     </thead>
-  );
-}
-
-function StickerTableBody({
-  categoryDisplayMap,
-  items,
-  onEdit,
-  onToggle,
-  selectedSet,
-}: Pick<Props, "items" | "onEdit" | "onToggle" | "selectedSet"> & {
-  categoryDisplayMap: ReadonlyMap<string, string>;
-}) {
-  if (items.length === 0) {
-    return (
-      <tbody>
-        <tr>
-          <td colSpan={8} className="p-6 text-center text-default-400">
-            没有匹配的贴纸。调整筛选或翻页试试。
-          </td>
-        </tr>
-      </tbody>
-    );
-  }
-
-  return (
-    <tbody>
-      {items.map((item) => (
-        <StickerDesktopRow
-          key={item.id}
-          item={item}
-          categoryDisplay={categoryDisplayName(categoryDisplayMap, item.categoryId)}
-          selected={selectedSet.has(item.id)}
-          onEdit={onEdit}
-          onToggle={onToggle}
-        />
-      ))}
-    </tbody>
   );
 }
 

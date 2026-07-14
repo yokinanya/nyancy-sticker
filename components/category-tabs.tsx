@@ -6,7 +6,7 @@ import type { Category } from "@/lib/types";
 import { allCategoryCount, defaultGalleryCategoryId } from "@/lib/categories";
 
 interface Props {
-  categories: Category[];
+  categories: readonly Category[];
   counts: Record<string, number>;
   selectedCategory: string | null;
   onCategoryChange: (category: string | null) => void;

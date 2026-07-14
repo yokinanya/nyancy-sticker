@@ -4,8 +4,6 @@ import { db } from "@/lib/db";
 import { stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
 
-export const runtime = "nodejs";
-
 /**
  * 批量检查 hash 是否已存在。
  * Body: { hashes: string[] }

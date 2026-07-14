@@ -1,13 +1,10 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { siteNotices } from "@/drizzle/schema";
 import { requireAdmin } from "@/lib/auth-helpers";
-import {
-  SITE_NOTICE_CACHE_TAG,
-  WARNING_BANNER_NOTICE_ID,
-} from "@/lib/site-notice-constants";
+import { WARNING_BANNER_NOTICE_ID } from "@/lib/site-notice-constants";
+import { updateNoticeData } from "@/lib/action-cache-updates";
 
 export async function updateWarningBannerNotice(formData: FormData): Promise<void> {
   const session = await requireAdmin();
@@ -41,9 +38,7 @@ export async function updateWarningBannerNotice(formData: FormData): Promise<voi
       },
     });
 
-  revalidateTag(SITE_NOTICE_CACHE_TAG, "max");
-  revalidatePath("/");
-  revalidatePath("/admin");
+  updateNoticeData();
 }
 
 function readOptionalText(formData: FormData, key: string): string | null {

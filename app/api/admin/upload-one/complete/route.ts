@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireEditor } from "@/lib/auth-helpers";
-import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
-import { revalidateStickerViews } from "@/lib/revalidate-stickers";
+import { revalidatePublishedStickerData } from "@/lib/route-cache-revalidation";
 import { insertApprovedSticker, isDuplicateStickerError } from "@/lib/sticker-record";
 import { uploadStickerObject } from "@/lib/upload";
-
-export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +10,6 @@ export async function POST(request: Request) {
     const input = await readCompleteInput(request);
     assertOwnedTempKey(input.key, session.user.id);
 
-    await assertActiveVisualHashesComplete();
     const uploaded = await uploadStickerObject(input.key, input.fileName, input.category);
 
     try {
@@ -28,7 +24,7 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    revalidateStickerViews();
+    revalidatePublishedStickerData([uploaded.characterId]);
     return NextResponse.json({ ok: true, id: uploaded.hash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "上传失败。";

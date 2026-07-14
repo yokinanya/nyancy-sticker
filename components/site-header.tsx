@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
 import {
-  listCachedCharactersWithCounts,
-  listCachedStaffVisibleCharactersWithCounts,
+  listCachedCharacterAccessRows,
 } from "@/lib/queries/characters";
+import { getCurrentSession } from "@/lib/current-session";
+import type { CharacterRef } from "@/lib/types";
 import { ThemeToggle } from "./theme-toggle";
 import { HeaderUserMenu } from "./header-user-menu";
 import { SiteTitle } from "./site-title";
 
 export async function SiteHeader() {
-  const session = await auth();
+  const [session, characterRows] = await Promise.all([
+    getCurrentSession(),
+    listCachedCharacterAccessRows(),
+  ]);
   const user = session?.user;
   const canViewAdminOnly = user?.role === "admin" || user?.role === "editor";
-  const characters = canViewAdminOnly
-    ? await listCachedStaffVisibleCharactersWithCounts()
-    : await listCachedCharactersWithCounts();
+  const characters = visibleCharacterRefs(characterRows, canViewAdminOnly);
 
   async function logoutAction() {
     "use server";
@@ -49,4 +51,16 @@ export async function SiteHeader() {
       </div>
     </header>
   );
+}
+
+function visibleCharacterRefs(
+  rows: Awaited<ReturnType<typeof listCachedCharacterAccessRows>>,
+  canViewAdminOnly: boolean,
+): CharacterRef[] {
+  return rows
+    .filter((row) => {
+      if (row.visibility === "public") return true;
+      return canViewAdminOnly && row.visibility === "admin_only";
+    })
+    .map(({ id, name }) => ({ id, name }));
 }

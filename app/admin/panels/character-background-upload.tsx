@@ -1,5 +1,7 @@
 "use client";
 
+import "react-image-crop/dist/ReactCrop.css";
+import "@/app/styles/character-background-crop.css";
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import ReactCrop, {
   centerCrop,
@@ -90,37 +92,44 @@ function BackgroundCropModal({
             <Modal.Header>
               <Modal.Heading>裁剪背景图</Modal.Heading>
             </Modal.Header>
-            <Modal.Body className="flex min-h-0 justify-center overflow-hidden">
-              <ReactCrop
-                aspect={BACKGROUND_CROP_ASPECT}
-                className="block max-h-[calc(100dvh-12rem)] max-w-full overflow-hidden rounded-lg"
-                crop={crop}
-                keepSelection
-                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                onComplete={(pixelCrop) => setCompletedCrop(pixelCrop)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={imageRef}
-                  src={draft.url}
-                  alt=""
-                  className="max-h-[calc(100dvh-12rem)] max-w-full select-none object-contain"
-                  onLoad={(event) => setCrop(centerAspectPercentCrop(event))}
-                />
-              </ReactCrop>
-            </Modal.Body>
-            <Modal.Footer className="pb-5 sm:pb-6">
-              <Button variant="ghost" isDisabled={isUploading} onPress={cancel} className="motion-press">
-                取消
-              </Button>
-              <Button variant="primary" isPending={isUploading} onPress={() => void upload()} className="motion-press">
-                上传
-              </Button>
-            </Modal.Footer>
+            <CropEditor
+              crop={crop}
+              draft={draft}
+              imageRef={imageRef}
+              onComplete={setCompletedCrop}
+              onCropChange={setCrop}
+            />
+            <CropActions isUploading={isUploading} onCancel={cancel} onUpload={upload} />
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
     </Modal>
+  );
+}
+
+function CropEditor({ crop, draft, imageRef, onComplete, onCropChange }: {
+  readonly crop: Crop | undefined;
+  readonly draft: CropDraft;
+  readonly imageRef: React.RefObject<HTMLImageElement | null>;
+  readonly onComplete: (crop: PixelCrop) => void;
+  readonly onCropChange: (crop: Crop) => void;
+}) {
+  return (
+    <Modal.Body className="flex min-h-0 justify-center overflow-hidden">
+      <ReactCrop aspect={BACKGROUND_CROP_ASPECT} className="block max-h-[calc(100dvh-12rem)] max-w-full overflow-hidden rounded-lg" crop={crop} keepSelection onChange={(_, nextCrop) => onCropChange(nextCrop)} onComplete={onComplete}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img ref={imageRef} src={draft.url} alt="" className="max-h-[calc(100dvh-12rem)] max-w-full select-none object-contain" onLoad={(event) => onCropChange(centerAspectPercentCrop(event))} />
+      </ReactCrop>
+    </Modal.Body>
+  );
+}
+
+function CropActions(options: { readonly isUploading: boolean; readonly onCancel: () => void; readonly onUpload: () => Promise<void> }) {
+  return (
+    <Modal.Footer className="pb-5 sm:pb-6">
+      <Button variant="ghost" isDisabled={options.isUploading} onPress={options.onCancel} className="motion-press">取消</Button>
+      <Button variant="primary" isPending={options.isUploading} onPress={() => void options.onUpload()} className="motion-press">上传</Button>
+    </Modal.Footer>
   );
 }
 

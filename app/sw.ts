@@ -7,6 +7,7 @@ import {
   NetworkOnly,
   Serwist,
 } from "serwist";
+import { resolveR2PublicHost } from "@/lib/r2-public-host";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -16,7 +17,7 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
-const R2_HOST = "s3.yokina.moe";
+const R2_HOST = resolveR2PublicHost(process.env.NEXT_PUBLIC_R2_HOST);
 const PREVIEW_CACHE_NAME = "r2-previews-v2";
 const SECONDS_PER_DAY = 60 * 60 * 24;
 const PREVIEW_CACHE_MAX_ENTRIES = 80;

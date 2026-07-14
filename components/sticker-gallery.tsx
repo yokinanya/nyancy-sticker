@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   BatchDownloadBar,
   SelectionModeToggle,
@@ -12,17 +12,25 @@ import { SearchBar } from "./search-bar";
 import { CategoryTabs } from "./category-tabs";
 import { TagFilter } from "./tag-filter";
 import { StickerGrid } from "./sticker-grid";
+import { useGalleryFilters, type GalleryFilters } from "./use-gallery-filters";
+import { useFilteredStickers, useStickerSearch } from "./use-sticker-search";
 import { ListBox, Select } from "@/components/ui/heroui-compat";
-import { useFilterStore } from "@/lib/store";
-import { orderGalleryStickers, type GallerySortMode } from "@/lib/sticker-order";
+import type { GallerySortMode } from "@/lib/sticker-order";
 import {
   countTagsByCategoryTree,
   countStickersByCategoryTree,
   createCategoryDescendantMap,
-  defaultGalleryCategoryId,
   type CategoryTagCount,
 } from "@/lib/categories";
 import type { Category, Manifest, Sticker } from "@/lib/types";
+import { selectedOptionLabel } from "@/lib/option-label";
+
+const SORT_MODE_OPTIONS = [
+  { value: "default", label: "默认排序" },
+  { value: "newest", label: "最新上传" },
+  { value: "oldest", label: "最早上传" },
+  { value: "name", label: "按名称" },
+] as const;
 
 const StickerPreviewModal = dynamic(
   () => import("./sticker-preview-modal").then((module) => module.StickerPreviewModal),
@@ -30,10 +38,10 @@ const StickerPreviewModal = dynamic(
 );
 
 interface Props {
-  manifest: Manifest;
-  characterId?: string;
-  characterName?: string;
-  showAllCategoryTab?: boolean;
+  readonly manifest: Manifest;
+  readonly characterId?: string;
+  readonly characterName?: string;
+  readonly showAllCategoryTab?: boolean;
 }
 
 export function StickerGallery({
@@ -42,9 +50,14 @@ export function StickerGallery({
   characterName = "stickers",
   showAllCategoryTab = false,
 }: Props) {
+  const view = useGalleryView({ manifest, characterId, characterName, showAllCategoryTab });
+  return <GalleryView {...view} characterId={characterId} categories={manifest.categories} showAllCategoryTab={showAllCategoryTab} />;
+}
+
+function useGalleryView({ manifest, characterId = "all", characterName = "stickers", showAllCategoryTab = false }: Props) {
   const { categories, stickers } = manifest;
-  const filters = useScopedFilters(characterId, categories, showAllCategoryTab);
-  const fuse = useFuseIndex(stickers, filters.deferredQuery);
+  const filters = useGalleryFilters({ characterId, categories, showAllCategoryTab });
+  const index = useStickerSearch({ stickers, query: filters.deferredQuery });
   const derived = useMemo(
     () => createGalleryDerivedData(categories, stickers),
     [categories, stickers],
@@ -56,205 +69,52 @@ export function StickerGallery({
   const [active, setActive] = useState<Sticker | null>(null);
   const [open, setOpen] = useState(false);
   const [sortMode, setSortMode] = useState<GallerySortMode>("default");
-  const filtered = useFilteredStickers(stickers, fuse, filters, derived.descendantMap, sortMode);
+  const filtered = useFilteredStickers({
+    stickers,
+    index,
+    filters,
+    descendantMap: derived.descendantMap,
+    sortMode,
+  });
   const selection = useStickerSelection(filtered, characterName);
-  const { isSelectionMode, toggle } = selection;
-  const onOpen = useCallback((s: Sticker) => {
-    if (isSelectionMode) {
-      toggle(s.id);
-      return;
-    }
-    setActive(s);
-    setOpen(true);
-  }, [isSelectionMode, toggle]);
+  const onOpen = useStickerOpen(selection, setActive, setOpen);
+  return { active, derived, filtered, filters, onOpen, open, selection, setOpen, setSortMode, sortMode, topTags };
+}
 
-  useGlobalSearchShortcut();
-
+function GalleryView(options: ReturnType<typeof useGalleryView> & Pick<Props, "characterId" | "showAllCategoryTab"> & { readonly categories: readonly Category[] }) {
   return (
-    <div className={selection.isSelectionMode ? "flex flex-col gap-4 pb-24" : "flex flex-col gap-4"}>
+    <div className={options.selection.isSelectionMode ? "flex flex-col gap-4 pb-24" : "flex flex-col gap-4"}>
       <GalleryControls
-        characterId={characterId}
-        categories={categories}
-        counts={derived.categoryCounts}
-        filters={filters}
-        showAllCategoryTab={showAllCategoryTab}
-        selection={selection}
-        sortMode={sortMode}
-        onSortModeChange={setSortMode}
-        topTags={topTags}
+        characterId={options.characterId ?? "all"} categories={options.categories}
+        counts={options.derived.categoryCounts} filters={options.filters}
+        showAllCategoryTab={options.showAllCategoryTab ?? false} selection={options.selection}
+        sortMode={options.sortMode} onSortModeChange={options.setSortMode} topTags={options.topTags}
       />
-      {filtered.length === 0 ? (
+      {options.filtered.length === 0 ? (
         <EmptyState />
       ) : (
-        <StickerGrid
-          stickers={filtered}
-          onOpen={onOpen}
-          isSelectionMode={selection.isSelectionMode}
-          selectedIds={selection.selectedIds}
-        />
+        <StickerGrid stickers={options.filtered} onOpen={options.onOpen} isSelectionMode={options.selection.isSelectionMode} selectedIds={options.selection.selectedIds} />
       )}
-      <BatchDownloadBar selection={selection} />
-      <StickerPreviewModal sticker={active} isOpen={open} onOpenChange={setOpen} />
+      <BatchDownloadBar selection={options.selection} />
+      <StickerPreviewModal sticker={options.active} isOpen={options.open} onOpenChange={options.setOpen} />
     </div>
   );
 }
 
-function useScopedFilters(
-  characterId: string,
-  categories: readonly Category[],
-  showAllCategoryTab: boolean,
+function useStickerOpen(
+  selection: StickerSelection,
+  setActive: (sticker: Sticker) => void,
+  setOpen: (open: boolean) => void,
 ) {
-  const scopeId = useFilterStore((s) => s.scopeId);
-  const storeQuery = useFilterStore((s) => s.query);
-  const storeCategory = useFilterStore((s) => s.category);
-  const storeTags = useFilterStore((s) => s.tags);
-  const setGalleryScope = useFilterStore((s) => s.setGalleryScope);
-  const setQuery = useFilterStore((s) => s.setQuery);
-  const setCategory = useFilterStore((s) => s.setCategory);
-  const toggleTag = useFilterStore((s) => s.toggleTag);
-  const clearTags = useFilterStore((s) => s.clearTags);
-  const defaultCategory = useMemo(
-    () => defaultGalleryCategoryId(categories, showAllCategoryTab),
-    [categories, showAllCategoryTab],
-  );
-  const currentScope = scopeId === characterId;
-  const query = currentScope ? storeQuery : "";
-  const category = currentScope ? storeCategory : defaultCategory;
-  const tags = currentScope ? storeTags : [];
-  const deferredQuery = useDeferredValue(query);
-  const deferredCategory = useDeferredValue(category);
-  const deferredTags = useDeferredValue(tags);
-  const isFiltering =
-    deferredQuery !== query ||
-    deferredCategory !== category ||
-    deferredTags !== tags;
-
-  useEffect(() => {
-    setGalleryScope(characterId, defaultCategory);
-  }, [characterId, defaultCategory, setGalleryScope]);
-
-  return {
-    category,
-    clearTags,
-    deferredCategory,
-    deferredQuery,
-    deferredTags,
-    isFiltering,
-    query,
-    setCategory,
-    setQuery,
-    tags,
-    toggleTag,
-  };
-}
-
-type GalleryFilters = ReturnType<typeof useScopedFilters>;
-
-type FuseIndex = {
-  search: (query: string) => { item: Sticker }[];
-};
-
-function useFuseIndex(stickers: readonly Sticker[], query: string) {
-  const [fuse, setFuse] = useState<FuseIndex | null>(null);
-
-  useEffect(() => {
-    if (!query.trim()) return;
-    let cancelled = false;
-    const idle =
-      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
-        .requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1));
-    idle(() => {
-      void import("@/lib/search").then(({ createFuse }) => {
-        if (!cancelled) setFuse(createFuse(stickers));
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [stickers, query]);
-
-  return fuse;
-}
-
-function useFilteredStickers(
-  stickers: readonly Sticker[],
-  fuse: FuseIndex | null,
-  filters: GalleryFilters,
-  descendantMap: ReadonlyMap<string, ReadonlySet<string>>,
-  sortMode: GallerySortMode,
-) {
-  const selectedCategoryIds = useMemo(() => {
-    if (!filters.deferredCategory) return null;
-    return descendantMap.get(filters.deferredCategory) ?? new Set([filters.deferredCategory]);
-  }, [filters.deferredCategory, descendantMap]);
-
-  return useMemo(
-    () => filterStickers({
-      categoryIds: selectedCategoryIds,
-      fuse,
-      query: filters.deferredQuery,
-      selectedCategory: filters.deferredCategory,
-      sortMode,
-      stickers,
-      tags: filters.deferredTags,
-    }),
-    [
-      stickers,
-      fuse,
-      filters.deferredQuery,
-      filters.deferredCategory,
-      selectedCategoryIds,
-      filters.deferredTags,
-      sortMode,
-    ],
-  );
-}
-
-function filterStickers(options: {
-  categoryIds: ReadonlySet<string> | null;
-  fuse: FuseIndex | null;
-  query: string;
-  selectedCategory: string | null;
-  sortMode: GallerySortMode;
-  stickers: readonly Sticker[];
-  tags: readonly string[];
-}) {
-  const text = options.query.trim();
-  const pool = text && options.fuse
-    ? options.fuse.search(text).map((result) => result.item)
-    : options.stickers;
-  const filtered = pool.filter((sticker) => matchesFilters(sticker, options.categoryIds, options.tags));
-  return orderGalleryStickers(filtered, options.selectedCategory, options.sortMode);
-}
-
-function matchesFilters(
-  sticker: Sticker,
-  categoryIds: ReadonlySet<string> | null,
-  tags: readonly string[],
-) {
-  if (categoryIds && !categoryIds.has(sticker.category)) return false;
-  if (tags.length === 0) return true;
-  return tags.every((tag) => sticker.tags.includes(tag));
-}
-
-function useGlobalSearchShortcut() {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (
-        e.key === "/" &&
-        !(e.target instanceof HTMLInputElement) &&
-        !(e.target instanceof HTMLTextAreaElement)
-      ) {
-        e.preventDefault();
-        const el = document.querySelector<HTMLInputElement>(
-          "input[type='search']",
-        );
-        el?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const { isSelectionMode, toggle } = selection;
+  return useCallback((sticker: Sticker) => {
+    if (isSelectionMode) {
+      toggle(sticker.id);
+      return;
+    }
+    setActive(sticker);
+    setOpen(true);
+  }, [isSelectionMode, setActive, setOpen, toggle]);
 }
 
 function GalleryControls({
@@ -267,17 +127,7 @@ function GalleryControls({
   selection,
   sortMode,
   topTags,
-}: {
-  characterId: string;
-  categories: Category[];
-  counts: Record<string, number>;
-  filters: GalleryFilters;
-  onSortModeChange: (sortMode: GallerySortMode) => void;
-  showAllCategoryTab: boolean;
-  selection: StickerSelection;
-  sortMode: GallerySortMode;
-  topTags: CategoryTagCount[];
-}) {
+}: GalleryControlsProps) {
   return (
     <>
       <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_10rem] sm:items-center">
@@ -308,34 +158,22 @@ function SortModeSelect({
   onChange,
   value,
 }: {
-  onChange: (sortMode: GallerySortMode) => void;
-  value: GallerySortMode;
+  readonly onChange: (sortMode: GallerySortMode) => void;
+  readonly value: GallerySortMode;
 }) {
   return (
-    <Select
-      aria-label="排序方式"
-      className="min-w-0"
-      selectedKey={value}
-      onSelectionChange={(key) => onChange(String(key) as GallerySortMode)}
-    >
-      <Select.Trigger className="field-trigger min-h-10 w-full bg-content1 px-3">
-        <Select.Value />
+    <Select selectedKey={value} onSelectionChange={(key) => onChange(String(key) as GallerySortMode)}>
+      <Select.Trigger aria-label="排序方式" className="field-trigger min-h-10 w-full bg-content1 px-3">
+        <Select.Value>{selectedOptionLabel(SORT_MODE_OPTIONS, value)}</Select.Value>
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover className="motion-popover popover-surface min-w-40">
         <ListBox>
-          <ListBox.Item id="default" textValue="默认排序" className="listbox-option">
-            默认排序
-          </ListBox.Item>
-          <ListBox.Item id="newest" textValue="最新上传" className="listbox-option">
-            最新上传
-          </ListBox.Item>
-          <ListBox.Item id="oldest" textValue="最早上传" className="listbox-option">
-            最早上传
-          </ListBox.Item>
-          <ListBox.Item id="name" textValue="按名称" className="listbox-option">
-            按名称
-          </ListBox.Item>
+          {SORT_MODE_OPTIONS.map((option) => (
+            <ListBox.Item key={option.value} id={option.value} className="listbox-option">
+              {option.label}
+            </ListBox.Item>
+          ))}
         </ListBox>
       </Select.Popover>
     </Select>
@@ -367,4 +205,16 @@ function EmptyState() {
       <div className="text-sm">没找到匹配的表情包，换个关键词试试？</div>
     </div>
   );
+}
+
+interface GalleryControlsProps {
+  readonly characterId: string;
+  readonly categories: readonly Category[];
+  readonly counts: Record<string, number>;
+  readonly filters: GalleryFilters;
+  readonly onSortModeChange: (sortMode: GallerySortMode) => void;
+  readonly showAllCategoryTab: boolean;
+  readonly selection: StickerSelection;
+  readonly sortMode: GallerySortMode;
+  readonly topTags: CategoryTagCount[];
 }

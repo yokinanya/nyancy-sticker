@@ -40,7 +40,7 @@ export function UserRoleSelector({ disabled, onChange, value }: Props) {
       }}
     >
       <Select.Trigger className="field-trigger h-9 min-h-9">
-        <Select.Value />
+        <Select.Value>{ROLE_LABEL[value]}</Select.Value>
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover className="motion-popover popover-surface w-[var(--choice-trigger-width)] p-1">
@@ -49,7 +49,6 @@ export function UserRoleSelector({ disabled, onChange, value }: Props) {
             <ListBox.Item
               key={option.value}
               id={option.value}
-              textValue={option.label}
               className="listbox-option"
             >
               {option.label}

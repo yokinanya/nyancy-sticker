@@ -10,6 +10,7 @@ import { MAX_SIZE_BYTES } from "@/lib/image-shared";
 import type { StickerExt } from "@/lib/types";
 
 export interface UploadedSticker {
+  characterId: string;
   src: string;
   previewSrc: string;
   key: string;
@@ -83,6 +84,7 @@ async function uploadStickerBuffer(
 
   const baseName = fileName.replace(/\.[^./\\]+$/, "");
   return {
+    characterId: category.characterId,
     src,
     previewSrc,
     key,

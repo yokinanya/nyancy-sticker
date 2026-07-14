@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { siteNotices } from "@/drizzle/schema";
 import { db } from "@/lib/db";
@@ -45,8 +45,9 @@ async function getVisibleWarningBannerNotice(): Promise<VisibleSiteNotice | null
   };
 }
 
-export const getCachedVisibleWarningBannerNotice = unstable_cache(
-  getVisibleWarningBannerNotice,
-  ["site-notice", WARNING_BANNER_NOTICE_ID],
-  { tags: [SITE_NOTICE_CACHE_TAG] },
-);
+export async function getCachedVisibleWarningBannerNotice() {
+  "use cache";
+  cacheLife("max");
+  cacheTag(SITE_NOTICE_CACHE_TAG);
+  return getVisibleWarningBannerNotice();
+}

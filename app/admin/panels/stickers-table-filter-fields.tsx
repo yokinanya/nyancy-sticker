@@ -5,6 +5,7 @@ import { Autocomplete, Button, Input, ListBox, Select } from "@/components/ui/he
 import type { Category, Character } from "@/lib/types";
 import { STATUS_LABEL } from "./stickers-table-parts";
 import type { StickerFilterUpdates, StickerTableFilters } from "./stickers-table-query";
+import { selectedOptionLabel } from "@/lib/option-label";
 
 const STATUS_OPTIONS = [
   { value: "__all", label: "全部状态" },
@@ -137,14 +138,16 @@ function CategoryAutocomplete({
   return (
     <Autocomplete selectedKey={value} onSelectionChange={(key) => onChange(String(key ?? ""))} isDisabled={isDisabled}>
       <Autocomplete.Trigger aria-label="分类筛选" className="field-trigger flex h-9 min-h-9 min-w-0 items-center gap-2">
-        <Autocomplete.Value className="min-w-0 flex-1 truncate" />
+        <Autocomplete.Value className="min-w-0 flex-1 truncate">
+          {selectedCategoryLabel(options, value)}
+        </Autocomplete.Value>
         <Autocomplete.ClearButton />
       </Autocomplete.Trigger>
       <Autocomplete.Popover className="motion-popover popover-surface max-h-64 overflow-auto p-2">
         <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索..." />
         <ListBox className="mt-2 max-h-48 overflow-auto">
           {filtered.map((option) => (
-            <ListBox.Item key={option.id} id={option.id} textValue={optionLabel(option)} className="listbox-option">
+            <ListBox.Item key={option.id} id={option.id} className="listbox-option">
               {optionLabel(option)}
             </ListBox.Item>
           ))}
@@ -166,12 +169,14 @@ function OptionSelect({
   return (
     <Select selectedKey={value} onSelectionChange={(key) => onChange(String(key))}>
       <Select.Trigger aria-label="状态筛选" className="field-trigger flex h-9 min-h-9 min-w-0 items-center gap-2">
-        <Select.Value className="min-w-0 flex-1 truncate" />
+        <Select.Value className="min-w-0 flex-1 truncate">
+          {selectedOptionLabel(options, value)}
+        </Select.Value>
       </Select.Trigger>
       <Select.Popover className="motion-popover popover-surface max-h-56 overflow-auto">
         <ListBox>
           {options.map((option) => (
-            <ListBox.Item key={option.value} id={option.value} textValue={option.label} className="listbox-option">
+            <ListBox.Item key={option.value} id={option.value} className="listbox-option">
               {option.label}
             </ListBox.Item>
           ))}
@@ -201,4 +206,12 @@ function filterCategories(options: readonly CategoryOption[], query: string) {
 
 function optionLabel(option: CategoryOption) {
   return "slug" in option ? `${option.name} (${option.slug})` : option.name;
+}
+
+function selectedCategoryLabel(
+  options: readonly CategoryOption[],
+  value: string,
+): string {
+  const option = options.find((item) => item.id === value);
+  return option ? optionLabel(option) : value;
 }

@@ -6,6 +6,7 @@ import {
   visualFingerprintDistance,
   type VisualFingerprintDistance,
 } from "./visual-hash";
+import { DisjointSets } from "./disjoint-sets";
 
 const AVERAGE_HASH_START = 0;
 const DIFFERENCE_HASH_START = 16;
@@ -29,15 +30,18 @@ export interface SimilaritySource {
   visualHashV2: string;
 }
 
-export interface SimilarityRow extends SimilaritySource {
+export interface SimilarityCandidateRow extends SimilaritySource {
   name: string;
-  src: string;
   previewSrc: string;
+  status: ActiveStickerStatus;
+}
+
+export interface SimilarityRow extends SimilarityCandidateRow {
+  src: string;
   width: number;
   height: number;
   categoryId: string;
   tags: string[];
-  status: ActiveStickerStatus;
   submitterLogin: string | null;
   submittedAt: Date;
 }
@@ -67,7 +71,7 @@ export interface SimilarityOptions {
 
 export function findSimilarRows(
   source: SimilaritySource,
-  rows: readonly SimilarityRow[],
+  rows: readonly SimilarityCandidateRow[],
   options: SimilarityOptions = {},
 ): SimilarSticker[] {
   assertVisualHashV2(source.visualHashV2);
@@ -76,7 +80,7 @@ export function findSimilarRows(
 
 export function findSimilarRowsForSources(
   sources: readonly SimilaritySource[],
-  rows: readonly SimilarityRow[],
+  rows: readonly SimilarityCandidateRow[],
   options: SimilarityOptions = {},
 ): Map<string, SimilarSticker[]> {
   const groupedRows = rowsByCharacter(rows);
@@ -90,7 +94,7 @@ export function findSimilarRowsForSources(
 
 function findSimilarRowsInGroup(
   source: SimilaritySource,
-  rows: readonly SimilarityRow[],
+  rows: readonly SimilarityCandidateRow[],
   options: SimilarityOptions,
 ): SimilarSticker[] {
   assertVisualHashV2(source.visualHashV2);
@@ -112,7 +116,7 @@ export function buildDuplicateGroups(
   const sets = new DisjointSets(rows.map((row) => row.id));
   const nearest = new Map<string, number>();
   for (const group of rowsByCharacter(rows).values()) {
-    compareCharacterRows(group, sets, nearest, options.ignoredPairs);
+    compareCharacterRows({ ignoredPairs: options.ignoredPairs, nearest, rows: group, sets });
   }
   return collectDuplicateGroups(rows, sets, nearest);
 }
@@ -127,38 +131,36 @@ export function normalizePair(leftId: string, rightId: string): readonly [string
   return leftId < rightId ? [leftId, rightId] : [rightId, leftId];
 }
 
-function compareCharacterRows(
-  rows: readonly SimilarityRow[],
-  sets: DisjointSets,
-  nearest: Map<string, number>,
-  ignoredPairs: ReadonlySet<string> | undefined,
-) {
-  rows.forEach((row) => assertVisualHashV2(row.visualHashV2, `贴纸 ${row.id} visualHashV2`));
-  for (let left = 0; left < rows.length; left += 1) {
-    compareRowPairs(rows, left, sets, nearest, ignoredPairs);
+interface ComparisonOptions {
+  readonly rows: readonly SimilarityRow[];
+  readonly sets: DisjointSets;
+  readonly nearest: Map<string, number>;
+  readonly ignoredPairs: ReadonlySet<string> | undefined;
+}
+
+function compareCharacterRows(options: ComparisonOptions) {
+  options.rows.forEach((row) => assertVisualHashV2(row.visualHashV2, `贴纸 ${row.id} visualHashV2`));
+  for (let left = 0; left < options.rows.length; left += 1) {
+    compareRowPairs({ ...options, left });
   }
 }
 
-function compareRowPairs(
-  rows: readonly SimilarityRow[],
-  left: number,
-  sets: DisjointSets,
-  nearest: Map<string, number>,
-  ignoredPairs: ReadonlySet<string> | undefined,
-) {
-  for (let right = left + 1; right < rows.length; right += 1) {
-    if (isIgnoredPair(rows[left].id, rows[right].id, ignoredPairs)) continue;
-    if (!mightBeSimilarFingerprint(rows[left].visualHashV2, rows[right].visualHashV2)) continue;
-    const distance = visualFingerprintDistance(rows[left].visualHashV2, rows[right].visualHashV2);
+function compareRowPairs(options: ComparisonOptions & { readonly left: number }) {
+  for (let right = options.left + 1; right < options.rows.length; right += 1) {
+    const leftRow = options.rows[options.left];
+    const rightRow = options.rows[right];
+    if (isIgnoredPair(leftRow.id, rightRow.id, options.ignoredPairs)) continue;
+    if (!mightBeSimilarFingerprint(leftRow.visualHashV2, rightRow.visualHashV2)) continue;
+    const distance = visualFingerprintDistance(leftRow.visualHashV2, rightRow.visualHashV2);
     if (!isSimilarFingerprint(distance)) continue;
-    sets.union(rows[left].id, rows[right].id);
-    rememberNearest(nearest, rows[left].id, distance.score);
-    rememberNearest(nearest, rows[right].id, distance.score);
+    options.sets.union(leftRow.id, rightRow.id);
+    rememberNearest(options.nearest, leftRow.id, distance.score);
+    rememberNearest(options.nearest, rightRow.id, distance.score);
   }
 }
 
-function rowsByCharacter(rows: readonly SimilarityRow[]): Map<string, SimilarityRow[]> {
-  const grouped = new Map<string, SimilarityRow[]>();
+function rowsByCharacter<T extends SimilaritySource>(rows: readonly T[]): Map<string, T[]> {
+  const grouped = new Map<string, T[]>();
   for (const row of rows) {
     const group = grouped.get(row.characterId);
     if (group) group.push(row);
@@ -232,7 +234,10 @@ function toDuplicateGroup(
   };
 }
 
-function toSimilarSticker(row: SimilarityRow, distance: VisualFingerprintDistance): SimilarSticker {
+function toSimilarSticker(
+  row: SimilarityCandidateRow,
+  distance: VisualFingerprintDistance,
+): SimilarSticker {
   return {
     id: row.id,
     name: row.name,
@@ -272,27 +277,4 @@ function compareDuplicateStickers(left: DuplicateSticker, right: DuplicateSticke
 
 function statusRank(status: ActiveStickerStatus): number {
   return status === "approved" ? 0 : 1;
-}
-
-class DisjointSets {
-  private readonly parent = new Map<string, string>();
-
-  constructor(ids: readonly string[]) {
-    ids.forEach((id) => this.parent.set(id, id));
-  }
-
-  find(id: string): string {
-    const parent = this.parent.get(id);
-    if (!parent) throw new Error(`未知贴纸 id：${id}`);
-    if (parent === id) return id;
-    const root = this.find(parent);
-    this.parent.set(id, root);
-    return root;
-  }
-
-  union(left: string, right: string): void {
-    const leftRoot = this.find(left);
-    const rightRoot = this.find(right);
-    if (leftRoot !== rightRoot) this.parent.set(rightRoot, leftRoot);
-  }
 }

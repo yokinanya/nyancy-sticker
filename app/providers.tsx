@@ -8,7 +8,6 @@ export function Providers({
   children,
 }: {
   children: ReactNode;
-  lang: string;
 }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

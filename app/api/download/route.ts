@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 const ALLOWED_HOST = process.env.R2_PUBLIC_HOST;
 
 export async function GET(request: Request) {

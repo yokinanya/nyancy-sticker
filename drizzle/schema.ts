@@ -3,6 +3,7 @@ import {
   index,
   integer,
   boolean,
+  check,
   pgEnum,
   pgTable,
   primaryKey,
@@ -146,6 +147,10 @@ export const stickers = pgTable(
     uniqueIndex("sticker_hash_active_idx")
       .on(s.hash)
       .where(sql`${s.status} <> 'rejected'`),
+    check(
+      "sticker_active_visual_hash_v2_check",
+      sql`${s.status} = 'rejected' OR ${s.visualHashV2} IS NOT NULL`,
+    ),
   ],
 );
 

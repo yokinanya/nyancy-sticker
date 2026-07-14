@@ -1,14 +1,14 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categoryIdFor } from "@/lib/category-ids";
 import { categories, characters, stickers } from "@/drizzle/schema";
 import { requireUser } from "@/lib/auth-helpers";
-import { CATEGORY_TREE_CACHE_TAG } from "@/lib/queries/categories";
-import { CHARACTER_LIST_CACHE_TAG } from "@/lib/queries/characters";
-import { SIMILAR_STICKERS_CACHE_TAG } from "@/lib/queries/similar-stickers";
+import {
+  updateCategoryData,
+  updatePendingStickerData,
+} from "@/lib/action-cache-updates";
 import { nextSortOrder } from "@/lib/sort-order";
 import { uploadStickerFile } from "@/lib/upload";
 
@@ -19,27 +19,14 @@ const NAME_MAX = 24;
 
 export async function createSubmission(formData: FormData): Promise<void> {
   const session = await requireUser();
-
-  const category = readText(formData, "category");
-  const name = readText(formData, "name");
-  const tagsValue = formData.get("tags");
-  const tags = typeof tagsValue === "string" && tagsValue.trim() ? splitTags(tagsValue) : [];
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("请上传一张图片文件。");
-  if (!ALLOWED_TYPES.has(file.type)) throw new Error("仅支持 PNG / JPG / GIF / WebP。");
-  if (file.size === 0) throw new Error("文件内容为空。");
-  if (file.size > MAX_SIZE_BYTES) throw new Error("文件过大（>8MB）。");
-
-  const found = await db.query.categories.findFirst({ where: eq(categories.id, category) });
-  if (!found) throw new Error(`分类不存在：${category}`);
-
-  const uploaded = await uploadStickerFile(file, category);
-
+  const input = readSubmissionInput(formData);
+  const found = await db.query.categories.findFirst({ where: eq(categories.id, input.category) });
+  if (!found) throw new Error(`分类不存在：${input.category}`);
+  const uploaded = await uploadStickerFile(input.file, input.category);
   try {
     await db.insert(stickers).values({
       id: uploaded.hash,
-      name,
+      name: input.name,
       src: uploaded.src,
       previewSrc: uploaded.previewSrc,
       width: uploaded.width,
@@ -48,8 +35,8 @@ export async function createSubmission(formData: FormData): Promise<void> {
       hash: uploaded.hash,
       visualHash: uploaded.visualHash,
       visualHashV2: uploaded.visualHashV2,
-      categoryId: category,
-      tags,
+      categoryId: input.category,
+      tags: input.tags,
       status: "pending",
       submittedById: session.user.id,
     });
@@ -59,8 +46,7 @@ export async function createSubmission(formData: FormData): Promise<void> {
     }
     throw err;
   }
-  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
-  revalidatePath("/admin");
+  updatePendingStickerData();
 }
 
 function readText(formData: FormData, key: string): string {
@@ -112,16 +98,31 @@ export async function createSubcategoryForSubmit(
     characterId,
     createdById: session.user.id,
   });
-  revalidateTag(CATEGORY_TREE_CACHE_TAG, "max");
-  revalidateTag(CHARACTER_LIST_CACHE_TAG, "max");
-  revalidateTag(SIMILAR_STICKERS_CACHE_TAG, "max");
-  revalidatePath("/");
-  revalidatePath("/admin");
+  updateCategoryData({ characterIds: [characterId], countsChanged: false });
   const created = await db.query.categories.findFirst({
     where: eq(categories.id, id),
   });
   if (!created) throw new Error(`分类创建失败：${rawId}`);
   return { id: created.id, name, slug: rawId, sortOrder, characterId };
+}
+
+function readSubmissionInput(formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("请上传一张图片文件。");
+  validateSubmissionFile(file);
+  const tagsValue = formData.get("tags");
+  return {
+    category: readText(formData, "category"),
+    file,
+    name: readText(formData, "name"),
+    tags: typeof tagsValue === "string" && tagsValue.trim() ? splitTags(tagsValue) : [],
+  };
+}
+
+function validateSubmissionFile(file: File): void {
+  if (!ALLOWED_TYPES.has(file.type)) throw new Error("仅支持 PNG / JPG / GIF / WebP。");
+  if (file.size === 0) throw new Error("文件内容为空。");
+  if (file.size > MAX_SIZE_BYTES) throw new Error("文件过大（>8MB）。");
 }
 
 function splitTags(value: string): string[] {

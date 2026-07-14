@@ -46,39 +46,48 @@ export function CategorySelect({ categories, value, name, onChange, triggerClass
         <Autocomplete.Trigger
           className={`field-trigger flex min-w-0 items-center gap-2 ${triggerClassName ?? ""}`}
         >
-          <Autocomplete.Value className="min-w-0 flex-1 truncate" />
+          <Autocomplete.Value className="min-w-0 flex-1 truncate">
+            {selectedCategoryLabel(categories, selected)}
+          </Autocomplete.Value>
           <Autocomplete.ClearButton />
         </Autocomplete.Trigger>
-        <Autocomplete.Popover className="motion-popover popover-surface min-w-72 p-2">
-          <div className="sticky top-0 z-10 bg-content1 pb-2">
-            <Input
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索..."
-              className="field-control"
-            />
-          </div>
-          <Autocomplete.Filter>
-            <ListBox>
-              {filteredCategories.map((category) => (
-                <ListBox.Item
-                  key={category.id}
-                  id={category.id}
-                  textValue={optionLabel(category)}
-                  className="listbox-option"
-                >
-                  {optionLabel(category)}
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Autocomplete.Filter>
-        </Autocomplete.Popover>
+        <CategoryOptions categories={filteredCategories} query={query} onQueryChange={setQuery} />
       </Autocomplete>
     </>
   );
 }
 
+function CategoryOptions(options: {
+  readonly categories: readonly SelectOption[];
+  readonly query: string;
+  readonly onQueryChange: (query: string) => void;
+}) {
+  return (
+    <Autocomplete.Popover className="motion-popover popover-surface min-w-72 p-2">
+      <div className="sticky top-0 z-10 bg-content1 pb-2">
+        <Input autoFocus value={options.query} onChange={(event) => options.onQueryChange(event.target.value)} placeholder="搜索..." className="field-control" />
+      </div>
+      <Autocomplete.Filter>
+        <ListBox>
+          {options.categories.map((category) => (
+            <ListBox.Item key={category.id} id={category.id} className="listbox-option">
+              {optionLabel(category)}
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Autocomplete.Filter>
+    </Autocomplete.Popover>
+  );
+}
+
 function optionLabel(option: SelectOption) {
   return option.slug ? `${option.name} (${option.slug})` : option.name;
+}
+
+function selectedCategoryLabel(
+  categories: readonly SelectOption[],
+  selected: string,
+): string {
+  const option = categories.find((category) => category.id === selected);
+  return option ? optionLabel(option) : selected;
 }

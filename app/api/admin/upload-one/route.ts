@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireEditor } from "@/lib/auth-helpers";
-import { assertActiveVisualHashesComplete } from "@/lib/queries/similar-stickers";
-import { revalidateStickerViews } from "@/lib/revalidate-stickers";
+import { revalidatePublishedStickerData } from "@/lib/route-cache-revalidation";
 import { insertApprovedSticker, isDuplicateStickerError } from "@/lib/sticker-record";
 import { uploadStickerFile } from "@/lib/upload";
-
-export const runtime = "nodejs";
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -26,7 +23,6 @@ export async function POST(request: Request) {
     if (file.size === 0) throw new Error("文件内容为空。");
     if (file.size > MAX_SIZE_BYTES) throw new Error("文件过大（>8MB）。");
 
-    await assertActiveVisualHashesComplete();
     const uploaded = await uploadStickerFile(file, category);
 
     try {
@@ -41,7 +37,7 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    revalidateStickerViews();
+    revalidatePublishedStickerData([uploaded.characterId]);
     return NextResponse.json({ ok: true, id: uploaded.hash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "上传失败。";

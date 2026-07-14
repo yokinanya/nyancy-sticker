@@ -1,5 +1,7 @@
-import { signIn, auth } from "@/auth";
+import { Suspense } from "react";
+import { signIn } from "@/auth";
 import { redirect } from "next/navigation";
+import { getCurrentSession } from "@/lib/current-session";
 import { LoginForm } from "./login-form";
 
 export const metadata = { title: "登录" };
@@ -8,8 +10,16 @@ interface PageProps {
   searchParams: Promise<{ callbackUrl?: string }>;
 }
 
-export default async function LoginPage({ searchParams }: PageProps) {
-  const session = await auth();
+export default function LoginPage({ searchParams }: PageProps) {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function LoginContent({ searchParams }: PageProps) {
+  const session = await getCurrentSession();
   if (session?.user?.id) redirect("/");
   const { callbackUrl } = await searchParams;
 
@@ -27,6 +37,14 @@ export default async function LoginPage({ searchParams }: PageProps) {
         </div>
         <LoginForm action={loginAction} />
       </section>
+    </main>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <main className="page-shell flex min-h-[60vh] max-w-md flex-col justify-center">
+      <section className="surface h-48 animate-pulse" />
     </main>
   );
 }

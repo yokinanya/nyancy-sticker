@@ -1,85 +1,28 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/lib/db";
-import { categories, stickers } from "@/drizzle/schema";
-import type { Sticker, Category, CharacterVisibility } from "@/lib/types";
+import type { Category, Manifest, Sticker } from "@/lib/types";
 
-export async function listApprovedStickers(): Promise<Sticker[]> {
-  const rows = await db
-    .select({
-      id: stickers.id,
-      name: stickers.name,
-      src: stickers.src,
-      previewSrc: stickers.previewSrc,
-      width: stickers.width,
-      height: stickers.height,
-      category: stickers.categoryId,
-      tags: stickers.tags,
-      ext: stickers.ext,
-      submittedAt: stickers.submittedAt,
-    })
-    .from(stickers)
-    .where(eq(stickers.status, "approved"))
-    .orderBy(asc(stickers.id));
-  return rows.map(requirePreviewSrc);
+export const CHARACTER_GALLERY_CACHE_TAG = "character-gallery";
+
+export async function listCachedCharacterGallery(
+  characterId: string,
+): Promise<Manifest> {
+  "use cache";
+  cacheLife("max");
+  cacheTag(
+    CHARACTER_GALLERY_CACHE_TAG,
+    characterGalleryCacheTag(characterId),
+  );
+
+  const row = await queryCharacterGallery(characterId);
+  return {
+    categories: row.categories.map(normalizeCategory),
+    stickers: row.stickers.map(requirePreviewSrc),
+  };
 }
 
-/**
- * 列出某个角色下的所有 approved 贴纸 + 该角色及其子分类的 Category 列表。
- */
-export async function listApprovedStickersByCharacter(
-  characterId: string,
-): Promise<{ stickers: Sticker[]; categories: Category[] }> {
-  const allCategories = await db
-    .select({
-      id: categories.id,
-      name: categories.name,
-      slug: categories.slug,
-      sortOrder: categories.sortOrder,
-      characterId: categories.characterId,
-    })
-    .from(categories)
-    .where(eq(categories.characterId, characterId))
-    .orderBy(asc(categories.sortOrder), asc(categories.slug));
-
-  if (allCategories.length === 0) return { stickers: [], categories: [] };
-
-  const categoryIds = allCategories.map((c) => c.id);
-
-  const stickerRows = await db
-    .select({
-      id: stickers.id,
-      name: stickers.name,
-      src: stickers.src,
-      previewSrc: stickers.previewSrc,
-      width: stickers.width,
-      height: stickers.height,
-      category: stickers.categoryId,
-      tags: stickers.tags,
-      ext: stickers.ext,
-      submittedAt: stickers.submittedAt,
-    })
-    .from(stickers)
-    .where(and(eq(stickers.status, "approved"), inArray(stickers.categoryId, categoryIds)))
-    .orderBy(asc(stickers.id));
-
-  const cats: Category[] = allCategories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    sortOrder: c.sortOrder,
-    characterId: c.characterId,
-  }));
-
-  return { stickers: stickerRows.map(requirePreviewSrc), categories: cats };
-}
-
-export async function listCharacterGallery(
-  characterId: string,
-): Promise<{
-  character: CharacterGalleryCharacter | null;
-  stickers: Sticker[];
-  categories: Category[];
-}> {
+async function queryCharacterGallery(characterId: string): Promise<CharacterGalleryRow> {
   const result = await db.execute<CharacterGalleryRow>(sql`
     WITH selected_categories AS (
       SELECT id, name, slug, "sortOrder", "characterId"
@@ -87,22 +30,16 @@ export async function listCharacterGallery(
       WHERE "characterId" = ${characterId}
     )
     SELECT
-      (
-        SELECT jsonb_build_object(
-          'id', id,
-          'name', name,
-          'visibility', visibility,
-          'backgroundImageUrl', "backgroundImageUrl"
-        )
-        FROM "character"
-        WHERE id = ${characterId}
-        LIMIT 1
-      ) AS character,
       COALESCE(
         (
           SELECT jsonb_agg(
-            jsonb_build_object('id', id, 'name', name, 'slug', slug, 'sortOrder', "sortOrder", 'characterId', "characterId")
-            ORDER BY "sortOrder" ASC, slug ASC
+            jsonb_build_object(
+              'id', id,
+              'name', name,
+              'slug', slug,
+              'sortOrder', "sortOrder",
+              'characterId', "characterId"
+            ) ORDER BY "sortOrder" ASC, slug ASC
           )
           FROM selected_categories
         ),
@@ -122,8 +59,7 @@ export async function listCharacterGallery(
               'tags', s.tags,
               'ext', s.ext,
               'submittedAt', s."submittedAt"
-            )
-            ORDER BY s.id ASC
+            ) ORDER BY s.id ASC
           )
           FROM "sticker" s
           WHERE s.status = 'approved'
@@ -132,24 +68,36 @@ export async function listCharacterGallery(
         '[]'::jsonb
       ) AS stickers
   `);
-  const row = result.rows[0];
-  if (!row?.character) return { character: null, stickers: [], categories: [] };
-  const cats = row.categories.map(normalizeCategory);
-  return {
-    character: row.character,
-    stickers: row.stickers.map(requirePreviewSrc),
-    categories: cats,
-  };
+  return result.rows[0] ?? { categories: [], stickers: [] };
+}
+
+export function characterGalleryCacheTag(characterId: string): string {
+  return `gallery:${characterId}`;
 }
 
 type QueriedSticker = Omit<Sticker, "previewSrc" | "submittedAt"> & {
-  previewSrc: string | null;
-  submittedAt: Date | string;
+  readonly previewSrc: string | null;
+  readonly submittedAt: Date | string;
 };
+
+interface CharacterGalleryRow extends Record<string, unknown> {
+  readonly categories: RawCategory[];
+  readonly stickers: QueriedSticker[];
+}
+
+interface RawCategory {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly sortOrder: number;
+  readonly characterId: string;
+}
 
 function requirePreviewSrc(sticker: QueriedSticker): Sticker {
   if (!sticker.previewSrc) {
-    throw new Error(`贴纸缺少 previewSrc：${sticker.id}，请先运行 pnpm db:backfill-previews。`);
+    throw new Error(
+      `贴纸缺少 previewSrc：${sticker.id}，请先运行 pnpm db:backfill-previews。`,
+    );
   }
   return {
     ...sticker,
@@ -159,29 +107,7 @@ function requirePreviewSrc(sticker: QueriedSticker): Sticker {
 }
 
 function normalizeSubmittedAt(value: Date | string): string {
-  if (value instanceof Date) return value.toISOString();
-  return value;
-}
-
-interface CharacterGalleryRow extends Record<string, unknown> {
-  character: CharacterGalleryCharacter | null;
-  categories: RawCategory[];
-  stickers: QueriedSticker[];
-}
-
-interface RawCategory {
-  id: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  characterId: string;
-}
-
-interface CharacterGalleryCharacter {
-  id: string;
-  name: string;
-  visibility: CharacterVisibility;
-  backgroundImageUrl: string | null;
+  return value instanceof Date ? value.toISOString() : value;
 }
 
 function normalizeCategory(category: RawCategory): Category {
@@ -189,7 +115,7 @@ function normalizeCategory(category: RawCategory): Category {
     id: category.id,
     name: category.name,
     slug: category.slug,
-    sortOrder: category.sortOrder,
+    sortOrder: Number(category.sortOrder),
     characterId: category.characterId,
   };
 }
